@@ -1,6 +1,5 @@
 # Node / TypeScript
 node_modules/
-dist/
 *.generated.*
 
 # Rust / wasm-pack (cargo target dirs at any depth; wasm-pack output beside the crate)
