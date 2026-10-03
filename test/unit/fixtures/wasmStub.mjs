@@ -100,6 +100,16 @@ export class TorClient {
     return new Response('body', { status: 200 })
   }
 
+  async connectStream(url) {
+    this.streamUrls ??= []
+    this.streamUrls.push(url)
+    return {
+      async read() { return null },
+      async write() {},
+      async close() {},
+    }
+  }
+
   close() {
     this.closeCalls++
   }

@@ -114,6 +114,34 @@ await client.fetch('https://example.com/upload', {
 
 Bodies of known size (`string`, `Uint8Array`, `ArrayBuffer`) are sent with `Content-Length` instead.
 
+### `client.createWebSocket(url, protocols?)`
+
+Open a WebSocket through Tor. The returned `TorWebSocket` follows the browser
+WebSocket API, including text and binary messages, subprotocols, fragmented
+frames, ping/pong, and the closing handshake. Both `ws://` and `wss://` are
+supported; TLS certificate validation and DNS resolution happen inside Arti.
+
+```javascript
+const socket = client.createWebSocket('wss://relay.example');
+
+socket.onopen = () => socket.send('["REQ","feed",{}]');
+socket.onmessage = (event) => console.log(event.data);
+socket.onclose = (event) => console.log(event.code, event.reason);
+```
+
+For libraries that accept a WebSocket constructor, use the client-bound
+`WebSocket` class. For example, with `nostr-tools`:
+
+```javascript
+import { useWebSocketImplementation } from 'nostr-tools/pool';
+
+useWebSocketImplementation(client.WebSocket);
+```
+
+`client.ready()` is called automatically before the stream opens. Closing the
+client also closes all WebSockets it created. Outgoing application frames are
+masked as required by RFC 6455, and incoming messages are limited to 16 MiB.
+
 ### `client.ready()`
 
 Wait for the client to be ready for traffic (guard connected, usable consensus, sufficient microdescs). Called automatically by `fetch()`, but useful to call early if you want to measure bootstrap time or show a loading state.
@@ -166,7 +194,8 @@ import { tor } from 'tor-js/singleton';
 const response = await tor.fetch('https://check.torproject.org/api/ip');
 ```
 
-The singleton auto-opens on first `fetch()`. Use `tor.configure(options)` to change settings, or `tor.close()` to shut down.
+The singleton auto-opens on the first `fetch()` or `createWebSocket()` call. Use
+`tor.configure(options)` to change settings, or `tor.close()` to shut down.
 
 ## Storage
 

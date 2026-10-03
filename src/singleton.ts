@@ -1,5 +1,6 @@
 import { TorClient } from './TorClient.js';
 import type { TorClientOptions, FetchInit } from './types.js';
+import type { TorWebSocket } from './TorWebSocket.js';
 
 let client: TorClient | undefined;
 
@@ -15,6 +16,17 @@ export const tor = {
       this.open();
     }
     return client!.fetch(url, init);
+  },
+
+  /**
+   * Open a browser-compatible WebSocket through Tor.
+   * Automatically opens the TorClient on first use.
+   */
+  createWebSocket(url: string | URL, protocols?: string | string[]): TorWebSocket {
+    if (!client) {
+      this.open();
+    }
+    return client!.createWebSocket(url, protocols);
   },
 
   /**

@@ -37,6 +37,8 @@ mod fast_bootstrap;
 mod fetch;
 mod runtime;
 mod storage;
+#[cfg(target_arch = "wasm32")]
+mod stream;
 
 pub use storage::{JsStorage, JsStorageInterface, CachedJsStorage};
 
@@ -54,6 +56,8 @@ use tracing::{debug, info, error};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use stream::TorStream;
 
 // Global log callback (WASM is single-threaded, so thread_local is fine)
 thread_local! {
@@ -329,6 +333,29 @@ impl TorClient {
         })
     }
 
+    /// Open a bidirectional byte stream to a ws:// or wss:// endpoint through Tor.
+    ///
+    /// For wss:// URLs, TLS is established inside WASM with certificate and
+    /// hostname validation before the stream is returned. WebSocket handshaking
+    /// and framing are handled by the TypeScript TorWebSocket wrapper.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen(js_name = connectStream, skip_typescript)]
+    pub fn connect_stream(&self, url: String) -> js_sys::Promise {
+        let client = match &self.inner {
+            Some(client) => Arc::clone(client),
+            None => {
+                return wasm_bindgen_futures::future_to_promise(async {
+                    Err(JsTorError::not_initialized().into_js_value())
+                });
+            }
+        };
+        let tls_config = Arc::clone(&self.tls_config);
+
+        wasm_bindgen_futures::future_to_promise(async move {
+            connect_stream_impl(&client, &url, tls_config).await
+        })
+    }
+
     /// Wait until the client is ready for traffic (connection usable + valid directory).
     #[wasm_bindgen(js_name = ready)]
     pub fn ready(&self) -> js_sys::Promise {
@@ -459,6 +486,70 @@ fn make_tls_config() -> Arc<futures_rustls::rustls::ClientConfig> {
 
     config.alpn_protocols = vec![b"http/1.1".to_vec()];
     Arc::new(config)
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn connect_stream_impl(
+    client: &ArtiTorClient<WasmRuntime>,
+    url_str: &str,
+    tls_config: Arc<futures_rustls::rustls::ClientConfig>,
+) -> Result<JsValue, JsValue> {
+    let url = url::Url::parse(url_str)
+        .map_err(|error| JsTorError::new(
+            "INVALID_URL",
+            "validation",
+            error.to_string(),
+            false,
+        ).into_js_value())?;
+    let secure = match url.scheme() {
+        "ws" => false,
+        "wss" => true,
+        scheme => {
+            return Err(JsTorError::new(
+                "INVALID_URL",
+                "validation",
+                format!("Unsupported stream scheme: {scheme}"),
+                false,
+            ).into_js_value());
+        }
+    };
+    let host = url.host_str().ok_or_else(|| JsTorError::new(
+        "INVALID_URL",
+        "validation",
+        "No host in URL",
+        false,
+    ).into_js_value())?;
+    let port = url.port_or_known_default().ok_or_else(|| JsTorError::new(
+        "INVALID_URL",
+        "validation",
+        "No port in URL",
+        false,
+    ).into_js_value())?;
+
+    debug!("Opening Tor stream to {}:{}", host, port);
+    let stream = client
+        .connect((host, port))
+        .await
+        .map_err(|error| JsTorError::connection(
+            format!("Failed to connect: {error}"),
+        ).into_js_value())?;
+
+    if secure {
+        let connector = futures_rustls::TlsConnector::from(tls_config);
+        let server_name = rustls_pki_types::ServerName::try_from(host.to_string())
+            .map_err(|error| JsTorError::tls(
+                format!("Invalid server name '{host}': {error}"),
+            ).into_js_value())?;
+        let stream = connector
+            .connect(server_name, stream)
+            .await
+            .map_err(|error| JsTorError::tls(
+                format!("TLS handshake failed with {host}: {error}"),
+            ).into_js_value())?;
+        Ok(TorStream::new(stream).into())
+    } else {
+        Ok(TorStream::new(stream).into())
+    }
 }
 
 // ============================================================================
@@ -787,6 +878,17 @@ export interface FetchInit {
 export interface TorClient {
     /** Make an HTTP fetch request through Tor. Returns a standard Response. */
     fetch(url: string, init?: FetchInit): Promise<Response>;
+    /** Open a TLS-ready bidirectional stream for the TorWebSocket wrapper. */
+    connectStream(url: string): Promise<TorStream>;
+    close(): Promise<void>;
+}
+
+export interface TorStream {
+    /** Read the next chunk, or null after EOF. Only one read may be pending. */
+    read(): Promise<Uint8Array | null>;
+    /** Write and flush one chunk. Only one write may be pending. */
+    write(data: Uint8Array): Promise<void>;
+    /** Close both sides of the stream. */
     close(): Promise<void>;
 }
 

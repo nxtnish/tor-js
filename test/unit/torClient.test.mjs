@@ -18,6 +18,7 @@ let wasm, TorClient, MemoryStorage, Log
 let stub
 
 const tick = (n = 1) => new Promise((r) => setTimeout(r, n))
+const onceEvent = (target, type) => new Promise((resolve) => target.addEventListener(type, resolve, { once: true }))
 
 before(async () => {
   wasm = await bundleTs('test/unit/fixtures/clientEntry.ts', 'torClient', {
@@ -284,6 +285,18 @@ describe('TorClient', () => {
     client.close()
   })
 
+  test('creates WebSocket-compatible instances over a WASM Tor stream', async () => {
+    const client = makeClient()
+    const socket = new client.WebSocket('wss://relay.example/nostr')
+    assert.equal(socket.readyState, socket.CONNECTING)
+    await onceEvent(socket, 'close')
+
+    const wasmClient = stub.clients.at(-1)
+    assert.deepEqual(wasmClient.streamUrls, ['wss://relay.example/nostr'])
+    assert.ok(wasmClient.readyCalls >= 1, 'opening a WebSocket awaited readiness')
+    client.close()
+  })
+
   describe('close', () => {
     test('closes the WASM client and the socket provider', async () => {
       const provider = fakeProvider()
@@ -469,6 +482,15 @@ describe('tor singleton', () => {
     const res = await tor.fetch('https://example.com/x')
     assert.equal(res.status, 200)
     assert.equal(stub.clients.length, clientsBefore + 1)
+  })
+
+  test('createWebSocket() opens the client on first use', async () => {
+    tor.configure({ storage: new MemoryStorage(), socketProvider: provider() })
+    const clientsBefore = stub.clients.length
+    const socket = tor.createWebSocket('wss://relay.example/')
+    await onceEvent(socket, 'close')
+    assert.equal(stub.clients.length, clientsBefore + 1)
+    assert.deepEqual(stub.clients.at(-1).streamUrls, ['wss://relay.example/'])
   })
 
   test('open() is idempotent', async () => {

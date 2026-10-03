@@ -9,6 +9,15 @@ import type { TorClientOptions, FetchInit, LogLevel } from './types.js';
 import { Log, levelEnabled } from './Log.js';
 import { createAutoStorage } from './storage/index.js';
 import { ArtiSocketProvider } from './socketProvider.js';
+import {
+  TorWebSocket,
+  type TorByteStream,
+  type TorWebSocketConstructor,
+} from './TorWebSocket.js';
+
+type WasmStreamClient = {
+  connectStream(url: string): Promise<TorByteStream>;
+};
 
 function isBrowser(): boolean {
   const g = globalThis as any;
@@ -18,6 +27,7 @@ function isBrowser(): boolean {
 }
 
 export class TorClient {
+  readonly WebSocket: TorWebSocketConstructor;
   private log: Log;
   // This client's level, as given to its log listener (whose default is
   // 'debug'). Also applied to the JS-side console output below.
@@ -28,6 +38,7 @@ export class TorClient {
   private closed = false;
   private readyPromise: Promise<void> | null = null;
   private socketProvider: ArtiSocketProvider | null = null;
+  private webSockets = new Set<TorWebSocket>();
 
   constructor(options: TorClientOptions = {}) {
     const hasGateway = Array.isArray(options.gateway)
@@ -39,6 +50,14 @@ export class TorClient {
         'because browsers can\'t open regular TCP sockets.',
       );
     }
+    const owner = this;
+    this.WebSocket = class extends TorWebSocket {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        if (owner.closed) throw new Error('TorClient is closed');
+        super(url, protocols, (normalizedUrl) => owner.connectWebSocketStream(normalizedUrl));
+        owner.trackWebSocket(this);
+      }
+    };
     // Default to a discarding sink so a library never spams a host page's
     // console — but not when the caller has explicitly asked for a log level.
     // `logLevel` only sets the wasm-side tracing filter, so pairing it with the
@@ -122,6 +141,30 @@ export class TorClient {
   }
 
   /**
+   * Open a browser-compatible WebSocket through Tor.
+   *
+   * The returned socket starts in CONNECTING state. Both ws:// and wss:// are
+   * supported; TLS and DNS resolution happen inside Arti.
+   */
+  createWebSocket(url: string | URL, protocols?: string | string[]): TorWebSocket {
+    if (this.closed) throw new Error('TorClient is closed');
+    return new this.WebSocket(url, protocols);
+  }
+
+  private async connectWebSocketStream(url: string): Promise<TorByteStream> {
+    if (this.closed) throw new Error('TorClient is closed');
+    const client = await this.clientPromise;
+    await this.ready();
+    if (this.closed) throw new Error('TorClient is closed');
+    return (client as unknown as WasmStreamClient).connectStream(url);
+  }
+
+  private trackWebSocket(socket: TorWebSocket): void {
+    this.webSockets.add(socket);
+    socket.addEventListener('close', () => this.webSockets.delete(socket), { once: true });
+  }
+
+  /**
    * Wait for the Tor client to be ready for traffic
    * (guard connected, usable consensus, and sufficient microdescs).
    *
@@ -169,6 +212,8 @@ export class TorClient {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    for (const socket of this.webSockets) socket.close(1000, 'TorClient closed');
+    this.webSockets.clear();
     this.removeLogListener?.();
     this.removeLogListener = null;
     this.wasmCallback = null;

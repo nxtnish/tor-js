@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **WebSockets over Tor.** `TorClient.createWebSocket()` and the client-bound
+  `TorClient.WebSocket` constructor open `ws://` and `wss://` connections over
+  Arti. The browser-compatible adapter implements the RFC 6455 upgrade,
+  masking, fragmentation, ping/pong, and closing handshake. The singleton also
+  exposes `tor.createWebSocket()`.
+
 ## 0.4.2
 
 No API breaks. One behaviour change to be aware of: setting `logLevel` without a
