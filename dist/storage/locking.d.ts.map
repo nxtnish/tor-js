@@ -1,0 +1,1 @@
+{"version":3,"file":"locking.d.ts","sourceRoot":"","sources":["../../src/storage/locking.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,OAAO,CAAC;AAGxC,iEAAiE;AACjE,MAAM,MAAM,gBAAgB,GAAG,IAAI,CAAC,UAAU,EAAE,SAAS,GAAG,QAAQ,CAAC,CAAC;AAMtE;;;;;;;;;GASG;AACH,wBAAgB,UAAU,CAAC,KAAK,EAAE,gBAAgB,EAAE,IAAI,EAAE,MAAM,GAAG,UAAU,CA8K5E"}

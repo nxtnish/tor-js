@@ -1,0 +1,1 @@
+{"version":3,"file":"kpsAddress.d.ts","sourceRoot":"","sources":["../src/kpsAddress.ts"],"names":[],"mappings":"AAAA;;;;;;;;;GASG;AAEH,MAAM,WAAW,UAAU;IACzB,EAAE,EAAE,MAAM,CAAC;IACX,IAAI,EAAE,MAAM,CAAC;IACb,QAAQ,EAAE,MAAM,CAAC;CAClB;AAED,wBAAgB,YAAY,CAAC,CAAC,EAAE,MAAM,GAAG,UAAU,CA4BlD;AAED,wBAAgB,aAAa,CAAC,IAAI,EAAE,UAAU,GAAG,MAAM,CAGtD"}
