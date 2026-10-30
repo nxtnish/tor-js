@@ -1,5 +1,7 @@
 import type { TorClientOptions, FetchInit, LogLevel } from './types.js';
+import { TorWebSocket, type TorWebSocketConstructor } from './TorWebSocket.js';
 export declare class TorClient {
+    readonly WebSocket: TorWebSocketConstructor;
     private log;
     private logLevel;
     private clientPromise;
@@ -8,6 +10,7 @@ export declare class TorClient {
     private closed;
     private readyPromise;
     private socketProvider;
+    private webSockets;
     constructor(options?: TorClientOptions);
     private bootstrap;
     /**
@@ -15,6 +18,15 @@ export declare class TorClient {
      * Returns a standard browser Response object.
      */
     fetch(url: string, init?: FetchInit): Promise<Response>;
+    /**
+     * Open a browser-compatible WebSocket through Tor.
+     *
+     * The returned socket starts in CONNECTING state. Both ws:// and wss:// are
+     * supported; TLS and DNS resolution happen inside Arti.
+     */
+    createWebSocket(url: string | URL, protocols?: string | string[]): TorWebSocket;
+    private connectWebSocketStream;
+    private trackWebSocket;
     /**
      * Wait for the Tor client to be ready for traffic
      * (guard connected, usable consensus, and sufficient microdescs).

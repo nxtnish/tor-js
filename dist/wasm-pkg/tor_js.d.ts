@@ -108,6 +108,17 @@ export interface FetchInit {
 export interface TorClient {
     /** Make an HTTP fetch request through Tor. Returns a standard Response. */
     fetch(url: string, init?: FetchInit): Promise<Response>;
+    /** Open a TLS-ready bidirectional stream for the TorWebSocket wrapper. */
+    connectStream(url: string): Promise<TorStream>;
+    close(): Promise<void>;
+}
+
+export interface TorStream {
+    /** Read the next chunk, or null after EOF. Only one read may be pending. */
+    read(): Promise<Uint8Array | null>;
+    /** Write and flush one chunk. Only one write may be pending. */
+    write(data: Uint8Array): Promise<void>;
+    /** Close both sides of the stream. */
     close(): Promise<void>;
 }
 
@@ -219,6 +230,12 @@ export class TorClientOptions {
     withStorage(storage: TorStorage): TorClientOptions;
 }
 
+export class TorStream {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+}
+
 /**
  * Initialize the tor-js WASM module
  *
@@ -254,6 +271,7 @@ export interface InitOutput {
     readonly __wbg_intounderlyingsource_free: (a: number, b: number) => void;
     readonly __wbg_torclient_free: (a: number, b: number) => void;
     readonly __wbg_torclientoptions_free: (a: number, b: number) => void;
+    readonly __wbg_torstream_free: (a: number, b: number) => void;
     readonly init: (a: number, b: number) => [number, number];
     readonly intounderlyingbytesource_autoAllocateChunkSize: (a: number) => number;
     readonly intounderlyingbytesource_cancel: (a: number) => void;
@@ -268,12 +286,16 @@ export interface InitOutput {
     readonly setLogCallback: (a: any) => void;
     readonly setLogLevel: (a: number, b: number) => [number, number];
     readonly torclient_close: (a: number) => any;
+    readonly torclient_connectStream: (a: number, b: number, c: number) => any;
     readonly torclient_create: (a: number) => any;
     readonly torclient_fetch: (a: number, b: number, c: number, d: any) => any;
     readonly torclient_ready: (a: number) => any;
     readonly torclientoptions_new: (a: any) => number;
     readonly torclientoptions_withFastBootstrap: (a: number, b: any) => number;
     readonly torclientoptions_withStorage: (a: number, b: any) => number;
+    readonly torstream_close: (a: number) => any;
+    readonly torstream_read: (a: number) => any;
+    readonly torstream_write: (a: number, b: any) => any;
     readonly wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___js_sys_4841e98648b61fa6___Function_fn_wasm_bindgen_2e541aa8012e5493___JsValue_____wasm_bindgen_2e541aa8012e5493___sys__Undefined___js_sys_4841e98648b61fa6___Function_fn_wasm_bindgen_2e541aa8012e5493___JsValue_____wasm_bindgen_2e541aa8012e5493___sys__Undefined_______true_: (a: number, b: number, c: any, d: any) => void;
     readonly wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_2e541aa8012e5493___JsError___true_: (a: number, b: number, c: any) => [number, number];
     readonly wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue______true_: (a: number, b: number, c: any) => void;

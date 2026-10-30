@@ -146,6 +146,21 @@ export class TorClient {
         return ret;
     }
     /**
+     * Open a bidirectional byte stream to a ws:// or wss:// endpoint through Tor.
+     *
+     * For wss:// URLs, TLS is established inside WASM with certificate and
+     * hostname validation before the stream is returned. WebSocket handshaking
+     * and framing are handled by the TypeScript TorWebSocket wrapper.
+     * @param {string} url
+     * @returns {Promise<any>}
+     */
+    connectStream(url) {
+        const ptr0 = passStringToWasm0(url, wasm.__wbindgen_malloc_command_export, wasm.__wbindgen_realloc_command_export);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.torclient_connectStream(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
      * Create a new TorClient with the given options.
      *
      * This is an async operation that returns a Promise.
@@ -264,6 +279,48 @@ export class TorClientOptions {
     }
 }
 if (Symbol.dispose) TorClientOptions.prototype[Symbol.dispose] = TorClientOptions.prototype.free;
+
+export class TorStream {
+    static __wrap(ptr) {
+        const obj = Object.create(TorStream.prototype);
+        obj.__wbg_ptr = ptr;
+        TorStreamFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        TorStreamFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_torstream_free(ptr, 0);
+    }
+    /**
+     * @returns {Promise<any>}
+     */
+    close() {
+        const ret = wasm.torstream_close(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {Promise<any>}
+     */
+    read() {
+        const ret = wasm.torstream_read(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {Uint8Array} data
+     * @returns {Promise<any>}
+     */
+    write(data) {
+        const ret = wasm.torstream_write(this.__wbg_ptr, data);
+        return ret;
+    }
+}
+if (Symbol.dispose) TorStream.prototype[Symbol.dispose] = TorStream.prototype.free;
 
 /**
  * Initialize the tor-js WASM module
@@ -708,6 +765,10 @@ function __wbg_get_imports() {
             const ret = arg0.read();
             return ret;
         },
+        __wbg_reject_bea6d825081bd4d7: function(arg0) {
+            const ret = Promise.reject(arg0);
+            return ret;
+        },
         __wbg_releaseLock_1538945f5f183d9f: function(arg0) {
             arg0.releaseLock();
         },
@@ -788,6 +849,10 @@ function __wbg_get_imports() {
             const ret = TorClient.__wrap(arg0);
             return ret;
         },
+        __wbg_torstream_new: function(arg0) {
+            const ret = TorStream.__wrap(arg0);
+            return ret;
+        },
         __wbg_tryLock_91a438b90413652d: function() { return handleError(function (arg0) {
             const ret = arg0.tryLock();
             return ret;
@@ -813,17 +878,17 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2037, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2070, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue______true_);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 5603, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 5636, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_2e541aa8012e5493___JsError___true_);
             return ret;
         },
         __wbindgen_generic_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 2354, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 2387, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke_______true_);
             return ret;
         },
@@ -889,6 +954,9 @@ const TorClientFinalization = (typeof FinalizationRegistry === 'undefined')
 const TorClientOptionsFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_torclientoptions_free(ptr, 1));
+const TorStreamFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_torstream_free(ptr, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc_command_export();

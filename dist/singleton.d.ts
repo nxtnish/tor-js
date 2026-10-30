@@ -1,10 +1,16 @@
 import type { TorClientOptions, FetchInit } from './types.js';
+import type { TorWebSocket } from './TorWebSocket.js';
 export declare const tor: {
     /**
      * Make an HTTP fetch request through Tor.
      * Automatically opens the TorClient on first use.
      */
     fetch(url: string, init?: FetchInit): Promise<Response>;
+    /**
+     * Open a browser-compatible WebSocket through Tor.
+     * Automatically opens the TorClient on first use.
+     */
+    createWebSocket(url: string | URL, protocols?: string | string[]): TorWebSocket;
     /**
      * Configure the singleton TorClient.
      * If already open, closes and reopens with the new config.
