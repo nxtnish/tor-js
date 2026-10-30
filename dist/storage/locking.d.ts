@@ -4,8 +4,8 @@ export type TorStorageSimple = Omit<TorStorage, 'tryLock' | 'unlock'>;
 /**
  * Wrap a simple storage with platform-detected locking.
  *
- * - Browser: Web Locks API (`navigator.locks`)
  * - Node.js: lock file at `~/.local/share/${name}/.lock`
+ * - Browser: Web Locks API (`navigator.locks`)
  *
  * If the real lock can't be acquired (another tab/process holds it),
  * the wrapper degrades gracefully: reads fall through to the inner storage,

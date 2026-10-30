@@ -1774,21 +1774,6 @@ var TorClient = class _TorClient {
     return ret;
   }
   /**
-   * Open a bidirectional byte stream to a ws:// or wss:// endpoint through Tor.
-   *
-   * For wss:// URLs, TLS is established inside WASM with certificate and
-   * hostname validation before the stream is returned. WebSocket handshaking
-   * and framing are handled by the TypeScript TorWebSocket wrapper.
-   * @param {string} url
-   * @returns {Promise<any>}
-   */
-  connectStream(url) {
-    const ptr0 = passStringToWasm0(url, wasm.__wbindgen_malloc_command_export, wasm.__wbindgen_realloc_command_export);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.torclient_connectStream(this.__wbg_ptr, ptr0, len0);
-    return ret;
-  }
-  /**
    * Create a new TorClient with the given options.
    *
    * This is an async operation that returns a Promise.
@@ -1903,47 +1888,6 @@ var TorClientOptions = class _TorClientOptions {
   }
 };
 if (Symbol.dispose) TorClientOptions.prototype[Symbol.dispose] = TorClientOptions.prototype.free;
-var TorStream = class _TorStream {
-  static __wrap(ptr) {
-    const obj = Object.create(_TorStream.prototype);
-    obj.__wbg_ptr = ptr;
-    TorStreamFinalization.register(obj, obj.__wbg_ptr, obj);
-    return obj;
-  }
-  __destroy_into_raw() {
-    const ptr = this.__wbg_ptr;
-    this.__wbg_ptr = 0;
-    TorStreamFinalization.unregister(this);
-    return ptr;
-  }
-  free() {
-    const ptr = this.__destroy_into_raw();
-    wasm.__wbg_torstream_free(ptr, 0);
-  }
-  /**
-   * @returns {Promise<any>}
-   */
-  close() {
-    const ret = wasm.torstream_close(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {Promise<any>}
-   */
-  read() {
-    const ret = wasm.torstream_read(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @param {Uint8Array} data
-   * @returns {Promise<any>}
-   */
-  write(data) {
-    const ret = wasm.torstream_write(this.__wbg_ptr, data);
-    return ret;
-  }
-};
-if (Symbol.dispose) TorStream.prototype[Symbol.dispose] = TorStream.prototype.free;
 function init(log_level) {
   var ptr0 = isLikeNone(log_level) ? 0 : passStringToWasm0(log_level, wasm.__wbindgen_malloc_command_export, wasm.__wbindgen_realloc_command_export);
   var len0 = WASM_VECTOR_LEN;
@@ -2042,9 +1986,10 @@ function __wbg_get_imports() {
       const ret = arg0.aborted;
       return ret;
     },
-    __wbg_all_ec3dacfec8d1eb8f: function(arg0) {
-      const ret = Promise.all(arg0);
-      return ret;
+    __wbg_addEventListener_9534e2dc12044ee4: function() {
+      return handleError(function(arg0, arg1, arg2, arg3) {
+        arg0.addEventListener(getStringFromWasm0(arg1, arg2), arg3);
+      }, arguments);
     },
     __wbg_append_8e87c13f0f08f8cd: function() {
       return handleError(function(arg0, arg1, arg2, arg3, arg4) {
@@ -2093,6 +2038,10 @@ function __wbg_get_imports() {
       const ret = arg0.catch(arg1);
       return ret;
     },
+    __wbg_charCodeAt_90635349fbda9f5f: function(arg0, arg1) {
+      const ret = arg0.charCodeAt(arg1 >>> 0);
+      return ret;
+    },
     __wbg_clearTimeout_113b1cde814ec762: function(arg0) {
       const ret = clearTimeout(arg0);
       return ret;
@@ -2115,15 +2064,9 @@ function __wbg_get_imports() {
       const ret = arg0.crypto;
       return ret;
     },
-    __wbg_delete_39424fe5dfd0d536: function() {
+    __wbg_delete_c4a1cfb4a8c20fc4: function() {
       return handleError(function(arg0, arg1, arg2) {
         const ret = arg0.delete(getStringFromWasm0(arg1, arg2));
-        return ret;
-      }, arguments);
-    },
-    __wbg_digest_1b9b654016330d0f: function() {
-      return handleError(function(arg0, arg1, arg2, arg3) {
-        const ret = arg0.digest(getStringFromWasm0(arg1, arg2), arg3);
         return ret;
       }, arguments);
     },
@@ -2155,7 +2098,7 @@ function __wbg_get_imports() {
       const ret = Array.from(arg0);
       return ret;
     },
-    __wbg_getAll_5064dec960ad3673: function() {
+    __wbg_getAll_0adbded114767a14: function() {
       return handleError(function(arg0, arg1, arg2) {
         const ret = arg0.getAll(getStringFromWasm0(arg1, arg2));
         return ret;
@@ -2239,16 +2182,6 @@ function __wbg_get_imports() {
       const ret = result;
       return ret;
     },
-    __wbg_instanceof_Crypto_05bc6194f86e23c0: function(arg0) {
-      let result;
-      try {
-        result = arg0 instanceof Crypto;
-      } catch (_) {
-        result = false;
-      }
-      const ret = result;
-      return ret;
-    },
     __wbg_instanceof_ReadableStream_07dda5955244a495: function(arg0) {
       let result;
       try {
@@ -2288,6 +2221,10 @@ function __wbg_get_imports() {
       return ret;
     },
     __wbg_length_4e1adc0d42e23620: function(arg0) {
+      const ret = arg0.length;
+      return ret;
+    },
+    __wbg_length_d52ee452c5be0c99: function(arg0) {
       const ret = arg0.length;
       return ret;
     },
@@ -2354,10 +2291,6 @@ function __wbg_get_imports() {
       const ret = new Uint8Array(arg0 >>> 0);
       return ret;
     },
-    __wbg_new_with_length_6a9fc3631737ef8c: function(arg0) {
-      const ret = new Array(arg0 >>> 0);
-      return ret;
-    },
     __wbg_new_with_opt_readable_stream_and_init_652b1d60607d75aa: function() {
       return handleError(function(arg0, arg1) {
         const ret = new Response(arg0, arg1);
@@ -2413,12 +2346,13 @@ function __wbg_get_imports() {
       const ret = arg0.read();
       return ret;
     },
-    __wbg_reject_bea6d825081bd4d7: function(arg0) {
-      const ret = Promise.reject(arg0);
-      return ret;
-    },
     __wbg_releaseLock_1538945f5f183d9f: function(arg0) {
       arg0.releaseLock();
+    },
+    __wbg_removeEventListener_4c9706814dcfaf79: function() {
+      return handleError(function(arg0, arg1, arg2, arg3) {
+        arg0.removeEventListener(getStringFromWasm0(arg1, arg2), arg3);
+      }, arguments);
     },
     __wbg_require_b4edbdcf3e2a1ef0: function() {
       return handleError(function() {
@@ -2441,21 +2375,18 @@ function __wbg_get_imports() {
         return ret;
       }, arguments);
     },
-    __wbg_set_13d25b81ab403f5e: function(arg0, arg1, arg2) {
-      arg0[arg1 >>> 0] = arg2;
-    },
-    __wbg_set_330c5a0dc45586f5: function() {
-      return handleError(function(arg0, arg1, arg2, arg3, arg4) {
-        const ret = arg0.set(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
-        return ret;
-      }, arguments);
-    },
     __wbg_set_5f2ad37e5e02dc7b: function(arg0, arg1, arg2) {
       arg0.set(getArrayU8FromWasm0(arg1, arg2));
     },
     __wbg_set_a377297433dfea63: function() {
       return handleError(function(arg0, arg1, arg2) {
         const ret = Reflect.set(arg0, arg1, arg2);
+        return ret;
+      }, arguments);
+    },
+    __wbg_set_b95b27eba5f71a4c: function() {
+      return handleError(function(arg0, arg1, arg2, arg3, arg4) {
+        const ret = arg0.set(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
         return ret;
       }, arguments);
     },
@@ -2495,10 +2426,6 @@ function __wbg_get_imports() {
       const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
       return ret;
     },
-    __wbg_subtle_0459789f1437758b: function(arg0) {
-      const ret = arg0.subtle;
-      return ret;
-    },
     __wbg_then_7a850dae4493f353: function(arg0, arg1, arg2) {
       const ret = arg0.then(arg1, arg2);
       return ret;
@@ -2511,17 +2438,13 @@ function __wbg_get_imports() {
       const ret = TorClient.__wrap(arg0);
       return ret;
     },
-    __wbg_torstream_new: function(arg0) {
-      const ret = TorStream.__wrap(arg0);
-      return ret;
-    },
-    __wbg_tryLock_1ee4b60fa559e640: function() {
+    __wbg_tryLock_91a438b90413652d: function() {
       return handleError(function(arg0) {
         const ret = arg0.tryLock();
         return ret;
       }, arguments);
     },
-    __wbg_unlock_fd23e835b8b45411: function() {
+    __wbg_unlock_6449c227c752ea74: function() {
       return handleError(function(arg0) {
         const ret = arg0.unlock();
         return ret;
@@ -2609,9 +2532,6 @@ var TorClientFinalization = typeof FinalizationRegistry === "undefined" ? { regi
 var TorClientOptionsFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_torclientoptions_free(ptr, 1));
-var TorStreamFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
-}, unregister: () => {
-} } : new FinalizationRegistry((ptr) => wasm.__wbg_torstream_free(ptr, 1));
 function addToExternrefTable0(obj) {
   const idx = wasm.__externref_table_alloc_command_export();
   wasm.__wbindgen_externrefs.set(idx, obj);
@@ -3251,26 +3171,6 @@ function addLocking(inner, name) {
   const STALE_MS = 3e4;
   const HEARTBEAT_MS = 1e4;
   async function tryAcquireReal() {
-    if (typeof navigator !== "undefined" && navigator.locks) {
-      let resolveAcquired;
-      const acquired = new Promise((r) => {
-        resolveAcquired = r;
-      });
-      lockRequestDone = navigator.locks.request(
-        `tor-js:${name}`,
-        { ifAvailable: true },
-        (lock) => {
-          if (lock) {
-            resolveAcquired(true);
-            return new Promise((r) => {
-              releaseLock = r;
-            });
-          }
-          resolveAcquired(false);
-        }
-      );
-      return acquired;
-    }
     if (typeof process !== "undefined" && process.versions?.node) {
       try {
         const { fs, fsSync, path, os } = await getNodeDeps();
@@ -3305,6 +3205,26 @@ function addLocking(inner, name) {
       } catch (err) {
         return false;
       }
+    }
+    if (typeof navigator !== "undefined" && navigator.locks) {
+      let resolveAcquired;
+      const acquired = new Promise((r) => {
+        resolveAcquired = r;
+      });
+      lockRequestDone = navigator.locks.request(
+        `tor-js:${name}`,
+        { ifAvailable: true },
+        (lock) => {
+          if (lock) {
+            resolveAcquired(true);
+            return new Promise((r) => {
+              releaseLock = r;
+            });
+          }
+          resolveAcquired(false);
+        }
+      );
+      return acquired;
     }
     throw new Error("Failed to detect suitable locking mechanism");
   }
@@ -3503,6 +3423,24 @@ function p2(n) {
   return String(n).padStart(2, "0");
 }
 
+// src/abort.ts
+function abortRace(p, signal, makeError) {
+  if (!signal) return p;
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(makeError());
+    if (signal.aborted) return onAbort();
+    signal.addEventListener("abort", onAbort, { once: true });
+    p.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+function abortError() {
+  return Object.assign(new Error("The operation was aborted"), {
+    code: "ABORT",
+    kind: "abort",
+    retryable: false
+  });
+}
+
 // src/kpsAddress.ts
 function parseAddress(s) {
   const malformed = () => new Error(
@@ -3540,15 +3478,7 @@ function formatAddress(addr) {
 var enc = new TextEncoder();
 var dec = new TextDecoder();
 var OPEN_STREAM_TIMEOUT_MS = 2e4;
-function abortRace(p, signal, what) {
-  if (!signal) return p;
-  return new Promise((resolve, reject) => {
-    const onAbort = () => reject(new Error(`${what}: timed out`));
-    if (signal.aborted) return onAbort();
-    signal.addEventListener("abort", onAbort, { once: true });
-    p.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
-  });
-}
+var timedOut = (what) => new Error(`${what}: timed out`);
 async function readHead(reader) {
   let buf = new Uint8Array(0);
   for (; ; ) {
@@ -3676,7 +3606,7 @@ var KpsGateway = class {
       );
       this.#connPromise = p;
     }
-    return abortRace(this.#connPromise, signal, `dial ${this.#address}`);
+    return abortRace(this.#connPromise, signal, () => timedOut(`dial ${this.#address}`));
   }
   #addTeardown(conn, fn) {
     const set = this.#teardowns.get(conn);
@@ -3719,7 +3649,7 @@ Host: ${this.#certhash}\r
       const { status, statusText, headers, extra } = await abortRace(
         readHead(reader),
         signal,
-        `GET ${path}`
+        () => timedOut(`GET ${path}`)
       );
       const chunks = [];
       let length = 0;
@@ -3762,7 +3692,7 @@ Host: ${target}\r
 `));
     let head;
     try {
-      head = await abortRace(readHead(reader), signal, `CONNECT ${target}`);
+      head = await abortRace(readHead(reader), signal, () => timedOut(`CONNECT ${target}`));
     } catch (e) {
       stream.close().catch(() => {
       });
@@ -4070,528 +4000,6 @@ var ArtiSocketProvider = class {
   }
 };
 
-// src/TorWebSocket.ts
-var WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-var MAX_HANDSHAKE_BYTES = 64 * 1024;
-var MAX_MESSAGE_BYTES = 16 * 1024 * 1024;
-var CLOSE_TIMEOUT_MS = 5e3;
-var TorWebSocket = class _TorWebSocket extends EventTarget {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSING = 2;
-  static CLOSED = 3;
-  CONNECTING = _TorWebSocket.CONNECTING;
-  OPEN = _TorWebSocket.OPEN;
-  CLOSING = _TorWebSocket.CLOSING;
-  CLOSED = _TorWebSocket.CLOSED;
-  url;
-  extensions = "";
-  binaryType = "blob";
-  bufferedAmount = 0;
-  protocol = "";
-  readyState = _TorWebSocket.CONNECTING;
-  onopen = null;
-  onmessage = null;
-  onerror = null;
-  onclose = null;
-  connector;
-  protocols;
-  stream = null;
-  incoming = new Uint8Array();
-  writeChain = Promise.resolve();
-  fragmentOpcode = null;
-  fragments = [];
-  fragmentLength = 0;
-  closeSent = false;
-  closeReceived = false;
-  closeTimer = null;
-  terminating = false;
-  constructor(url, protocols, connector) {
-    super();
-    this.url = normalizeWebSocketUrl(url);
-    this.protocols = normalizeProtocols(protocols);
-    this.connector = connector;
-    void this.connect();
-  }
-  send(data) {
-    if (this.readyState !== _TorWebSocket.OPEN) {
-      throw invalidStateError("WebSocket is not open");
-    }
-    if (typeof data === "string") {
-      const payload2 = new TextEncoder().encode(data);
-      this.queueDataFrame(1, payload2.byteLength, async () => payload2);
-      return;
-    }
-    if (isBlob(data)) {
-      this.queueDataFrame(2, data.size, async () => new Uint8Array(await data.arrayBuffer()));
-      return;
-    }
-    const payload = toUint8Array(data);
-    this.queueDataFrame(2, payload.byteLength, async () => payload);
-  }
-  close(code, reason = "") {
-    const reasonBytes = new TextEncoder().encode(reason);
-    validateClose(code, reasonBytes);
-    if (this.readyState === _TorWebSocket.CLOSED || this.readyState === _TorWebSocket.CLOSING) {
-      return;
-    }
-    if (this.readyState === _TorWebSocket.CONNECTING) {
-      this.readyState = _TorWebSocket.CLOSING;
-      this.finishClose(1006, "", false);
-      return;
-    }
-    this.readyState = _TorWebSocket.CLOSING;
-    this.closeSent = true;
-    const payload = encodeClosePayload(code, reasonBytes);
-    void this.queueFrame(8, payload).catch(() => void 0);
-    this.startCloseTimer();
-  }
-  async connect() {
-    try {
-      const stream = await this.connector(this.url);
-      this.stream = stream;
-      if (this.readyState !== _TorWebSocket.CONNECTING) {
-        await stream.close().catch(() => void 0);
-        this.finishClose(1006, "", false);
-        return;
-      }
-      const key = randomBase64(16);
-      await stream.write(buildHandshakeRequest(new URL(this.url), key, this.protocols));
-      const response = await this.readHandshake();
-      this.protocol = await validateHandshake(response, key, this.protocols);
-      if (this.readyState !== _TorWebSocket.CONNECTING) {
-        await stream.close().catch(() => void 0);
-        this.finishClose(1006, "", false);
-        return;
-      }
-      this.readyState = _TorWebSocket.OPEN;
-      this.emit("open", new Event("open"));
-      void this.readLoop();
-    } catch (error) {
-      await this.fail(error);
-    }
-  }
-  async readHandshake() {
-    let bytes = this.incoming;
-    while (true) {
-      const end = findHeaderEnd(bytes);
-      if (end >= 0) {
-        const response = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, end));
-        this.incoming = bytes.slice(end + 4);
-        return response;
-      }
-      if (bytes.byteLength >= MAX_HANDSHAKE_BYTES) {
-        throw new Error("WebSocket handshake response is too large");
-      }
-      const chunk = await this.stream?.read();
-      if (!chunk?.byteLength) {
-        throw new Error("Tor stream closed during WebSocket handshake");
-      }
-      bytes = concatBytes(bytes, chunk);
-    }
-  }
-  async readLoop() {
-    try {
-      while (this.readyState === _TorWebSocket.OPEN || this.readyState === _TorWebSocket.CLOSING) {
-        const frame = await this.readFrame();
-        if (!frame) {
-          if (!this.closeReceived) {
-            this.finishClose(1006, "", false);
-          }
-          return;
-        }
-        await this.handleFrame(frame);
-      }
-    } catch (error) {
-      await this.fail(error);
-    }
-  }
-  async readFrame() {
-    if (!await this.ensureBytes(2)) return null;
-    const first = this.incoming[0];
-    const second = this.incoming[1];
-    const fin = (first & 128) !== 0;
-    const rsv = first & 112;
-    const opcode = first & 15;
-    const masked = (second & 128) !== 0;
-    let length = second & 127;
-    let offset = 2;
-    if (rsv !== 0) throw new ProtocolError("RSV bits are set without an extension");
-    if (masked) throw new ProtocolError("Server frames must not be masked");
-    if (length === 126) {
-      if (!await this.ensureBytes(4)) return null;
-      length = new DataView(this.incoming.buffer, this.incoming.byteOffset + 2, 2).getUint16(0);
-      if (length < 126) throw new ProtocolError("Non-canonical WebSocket frame length");
-      offset = 4;
-    } else if (length === 127) {
-      if (!await this.ensureBytes(10)) return null;
-      const longLength = new DataView(this.incoming.buffer, this.incoming.byteOffset + 2, 8).getBigUint64(0);
-      if (longLength < 65536n || longLength > BigInt(Number.MAX_SAFE_INTEGER)) {
-        throw new ProtocolError("Invalid WebSocket frame length");
-      }
-      length = Number(longLength);
-      offset = 10;
-    }
-    const isControl = opcode >= 8;
-    if (isControl && (!fin || length > 125)) {
-      throw new ProtocolError("Invalid fragmented or oversized control frame");
-    }
-    if (length > MAX_MESSAGE_BYTES) {
-      throw new MessageTooLargeError();
-    }
-    if (!await this.ensureBytes(offset + length)) return null;
-    const payload = this.incoming.slice(offset, offset + length);
-    this.incoming = this.incoming.slice(offset + length);
-    return { fin, opcode, payload };
-  }
-  async ensureBytes(length) {
-    while (this.incoming.byteLength < length) {
-      const chunk = await this.stream?.read();
-      if (!chunk?.byteLength) return false;
-      this.incoming = concatBytes(this.incoming, chunk);
-    }
-    return true;
-  }
-  async handleFrame(frame) {
-    if (frame.opcode === 8) {
-      await this.handleCloseFrame(frame.payload);
-      return;
-    }
-    if (frame.opcode === 9) {
-      await this.queueFrame(10, frame.payload);
-      return;
-    }
-    if (frame.opcode === 10) return;
-    if (frame.opcode === 0) {
-      if (this.fragmentOpcode === null) {
-        throw new ProtocolError("Unexpected continuation frame");
-      }
-      this.appendFragment(frame.payload);
-      if (frame.fin) {
-        const opcode = this.fragmentOpcode;
-        const payload = concatMany(this.fragments, this.fragmentLength);
-        this.clearFragments();
-        this.deliverMessage(opcode, payload);
-      }
-      return;
-    }
-    if (frame.opcode !== 1 && frame.opcode !== 2) {
-      throw new ProtocolError("Unsupported WebSocket opcode");
-    }
-    if (this.fragmentOpcode !== null) {
-      throw new ProtocolError("Received a new data frame during a fragmented message");
-    }
-    if (frame.fin) {
-      this.deliverMessage(frame.opcode, frame.payload);
-    } else {
-      this.fragmentOpcode = frame.opcode;
-      this.appendFragment(frame.payload);
-    }
-  }
-  appendFragment(payload) {
-    this.fragmentLength += payload.byteLength;
-    if (this.fragmentLength > MAX_MESSAGE_BYTES) throw new MessageTooLargeError();
-    this.fragments.push(payload);
-  }
-  clearFragments() {
-    this.fragmentOpcode = null;
-    this.fragments = [];
-    this.fragmentLength = 0;
-  }
-  deliverMessage(opcode, payload) {
-    let data;
-    if (opcode === 1) {
-      try {
-        data = new TextDecoder("utf-8", { fatal: true }).decode(payload);
-      } catch {
-        throw new ProtocolError("Text message contains invalid UTF-8");
-      }
-    } else if (this.binaryType === "arraybuffer" || typeof Blob === "undefined") {
-      data = payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength);
-    } else {
-      data = new Blob([payload]);
-    }
-    this.emit("message", new MessageEvent("message", { data, origin: new URL(this.url).origin }));
-  }
-  async handleCloseFrame(payload) {
-    if (payload.byteLength === 1) throw new ProtocolError("Invalid WebSocket close payload");
-    let code = 1005;
-    let reason = "";
-    if (payload.byteLength >= 2) {
-      code = new DataView(payload.buffer, payload.byteOffset, 2).getUint16(0);
-      if (!isValidReceivedCloseCode(code)) throw new ProtocolError("Invalid WebSocket close code");
-      try {
-        reason = new TextDecoder("utf-8", { fatal: true }).decode(payload.subarray(2));
-      } catch {
-        throw new ProtocolError("Close reason contains invalid UTF-8");
-      }
-    }
-    this.closeReceived = true;
-    this.readyState = _TorWebSocket.CLOSING;
-    if (!this.closeSent) {
-      this.closeSent = true;
-      await this.queueFrame(8, payload);
-    }
-    await this.stream?.close().catch(() => void 0);
-    this.finishClose(code, reason, true);
-  }
-  queueDataFrame(opcode, byteLength, getPayload) {
-    this.bufferedAmount += byteLength;
-    const operation = this.writeChain.then(async () => {
-      const payload = await getPayload();
-      if (this.readyState !== _TorWebSocket.OPEN) return;
-      await this.writeFrame(opcode, payload);
-    });
-    this.writeChain = operation.catch(() => void 0);
-    void operation.then(
-      () => {
-        this.bufferedAmount = Math.max(0, this.bufferedAmount - byteLength);
-      },
-      async (error) => {
-        this.bufferedAmount = Math.max(0, this.bufferedAmount - byteLength);
-        await this.fail(error);
-      }
-    );
-  }
-  queueFrame(opcode, payload) {
-    const operation = this.writeChain.then(() => this.writeFrame(opcode, payload));
-    this.writeChain = operation.catch(() => void 0);
-    return operation;
-  }
-  async writeFrame(opcode, payload) {
-    if (!this.stream) throw new Error("Tor stream is not connected");
-    await this.stream.write(encodeClientFrame(opcode, payload));
-  }
-  startCloseTimer() {
-    this.closeTimer = setTimeout(() => {
-      void this.stream?.close().catch(() => void 0);
-      this.finishClose(1006, "", false);
-    }, CLOSE_TIMEOUT_MS);
-  }
-  async fail(error) {
-    if (this.readyState === _TorWebSocket.CLOSED || this.terminating) return;
-    this.terminating = true;
-    const closeCode = error instanceof MessageTooLargeError ? 1009 : error instanceof ProtocolError ? 1002 : 1006;
-    if (this.readyState === _TorWebSocket.OPEN && closeCode !== 1006) {
-      this.readyState = _TorWebSocket.CLOSING;
-      this.closeSent = true;
-      await this.queueFrame(8, encodeClosePayload(closeCode, new Uint8Array())).catch(() => void 0);
-    }
-    this.emit("error", new Event("error"));
-    await this.stream?.close().catch(() => void 0);
-    this.finishClose(closeCode, errorMessage(error), false);
-  }
-  finishClose(code, reason, wasClean) {
-    if (this.readyState === _TorWebSocket.CLOSED) return;
-    if (this.closeTimer) clearTimeout(this.closeTimer);
-    this.closeTimer = null;
-    this.readyState = _TorWebSocket.CLOSED;
-    this.stream = null;
-    this.clearFragments();
-    this.emit("close", createCloseEvent(code, reason, wasClean));
-  }
-  emit(type, event) {
-    this.dispatchEvent(event);
-    const handler = this[`on${type}`];
-    if (!handler) return;
-    try {
-      handler.call(this, event);
-    } catch (error) {
-      queueMicrotask(() => {
-        throw error;
-      });
-    }
-  }
-};
-var ProtocolError = class extends Error {
-};
-var MessageTooLargeError = class extends Error {
-  constructor() {
-    super("WebSocket message exceeds the 16 MiB limit");
-  }
-};
-function normalizeWebSocketUrl(value) {
-  const url = new URL(value);
-  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
-    throw new SyntaxError("WebSocket URL must use ws: or wss:");
-  }
-  if (url.username || url.password) throw new SyntaxError("WebSocket URL must not contain credentials");
-  if (url.hash) throw new SyntaxError("WebSocket URL must not contain a fragment");
-  return url.href;
-}
-function normalizeProtocols(value) {
-  const protocols = value === void 0 ? [] : typeof value === "string" ? [value] : [...value];
-  const seen = /* @__PURE__ */ new Set();
-  for (const protocol of protocols) {
-    if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(protocol)) {
-      throw new SyntaxError(`Invalid WebSocket protocol: ${protocol}`);
-    }
-    if (seen.has(protocol)) throw new SyntaxError(`Duplicate WebSocket protocol: ${protocol}`);
-    seen.add(protocol);
-  }
-  return protocols;
-}
-function buildHandshakeRequest(url, key, protocols) {
-  const path = `${url.pathname || "/"}${url.search}`;
-  const headers = [
-    `GET ${path} HTTP/1.1`,
-    `Host: ${url.host}`,
-    "Upgrade: websocket",
-    "Connection: Upgrade",
-    `Sec-WebSocket-Key: ${key}`,
-    "Sec-WebSocket-Version: 13"
-  ];
-  if (typeof location !== "undefined" && location.origin && location.origin !== "null") {
-    headers.push(`Origin: ${location.origin}`);
-  }
-  if (protocols.length) headers.push(`Sec-WebSocket-Protocol: ${protocols.join(", ")}`);
-  return new TextEncoder().encode(`${headers.join("\r\n")}\r
-\r
-`);
-}
-async function validateHandshake(response, key, protocols) {
-  const lines = response.split("\r\n");
-  const status = /^HTTP\/1\.[01]\s+(\d{3})(?:\s|$)/i.exec(lines.shift() ?? "");
-  if (!status || status[1] !== "101") throw new Error("WebSocket server rejected the upgrade");
-  const headers = /* @__PURE__ */ new Map();
-  for (const line of lines) {
-    const separator = line.indexOf(":");
-    if (separator <= 0) throw new Error("Invalid WebSocket handshake header");
-    const name = line.slice(0, separator).trim().toLowerCase();
-    const value = line.slice(separator + 1).trim();
-    headers.set(name, headers.has(name) ? `${headers.get(name)}, ${value}` : value);
-  }
-  if (!hasHeaderToken(headers.get("upgrade"), "websocket")) {
-    throw new Error("WebSocket upgrade header is missing");
-  }
-  if (!hasHeaderToken(headers.get("connection"), "upgrade")) {
-    throw new Error("WebSocket connection header is missing");
-  }
-  const expectedAccept = await sha1Base64(`${key}${WEBSOCKET_GUID}`);
-  if (headers.get("sec-websocket-accept") !== expectedAccept) {
-    throw new Error("WebSocket server returned an invalid accept key");
-  }
-  if (headers.has("sec-websocket-extensions")) {
-    throw new Error("WebSocket server selected an unsupported extension");
-  }
-  const selectedProtocol = headers.get("sec-websocket-protocol") ?? "";
-  if (selectedProtocol && !protocols.includes(selectedProtocol)) {
-    throw new Error("WebSocket server selected an unsupported protocol");
-  }
-  if (!selectedProtocol && protocols.length && headers.has("sec-websocket-protocol")) {
-    throw new Error("WebSocket server returned an invalid protocol");
-  }
-  return selectedProtocol;
-}
-function encodeClientFrame(opcode, payload) {
-  const mask = crypto.getRandomValues(new Uint8Array(4));
-  let headerLength = 2;
-  if (payload.byteLength >= 126 && payload.byteLength <= 65535) headerLength += 2;
-  else if (payload.byteLength > 65535) headerLength += 8;
-  const frame = new Uint8Array(headerLength + 4 + payload.byteLength);
-  frame[0] = 128 | opcode;
-  let offset = 2;
-  if (payload.byteLength < 126) {
-    frame[1] = 128 | payload.byteLength;
-  } else if (payload.byteLength <= 65535) {
-    frame[1] = 128 | 126;
-    new DataView(frame.buffer).setUint16(2, payload.byteLength);
-    offset = 4;
-  } else {
-    frame[1] = 128 | 127;
-    new DataView(frame.buffer).setBigUint64(2, BigInt(payload.byteLength));
-    offset = 10;
-  }
-  frame.set(mask, offset);
-  offset += 4;
-  for (let index = 0; index < payload.byteLength; index += 1) {
-    frame[offset + index] = payload[index] ^ mask[index % 4];
-  }
-  return frame;
-}
-function encodeClosePayload(code, reason) {
-  if (code === void 0) return new Uint8Array();
-  const payload = new Uint8Array(2 + reason.byteLength);
-  new DataView(payload.buffer).setUint16(0, code);
-  payload.set(reason, 2);
-  return payload;
-}
-function validateClose(code, reason) {
-  if (code !== void 0 && code !== 1e3 && (code < 3e3 || code > 4999)) {
-    throw new RangeError("Close code must be 1000 or between 3000 and 4999");
-  }
-  if (reason.byteLength > 123) throw new SyntaxError("Close reason exceeds 123 UTF-8 bytes");
-  if (code === void 0 && reason.byteLength) throw new SyntaxError("A close reason requires a close code");
-}
-function isValidReceivedCloseCode(code) {
-  if (code < 1e3 || code >= 5e3) return false;
-  if ([1004, 1005, 1006, 1015].includes(code)) return false;
-  return code < 1016 || code >= 3e3;
-}
-function hasHeaderToken(value, token) {
-  return value?.split(",").some((part) => part.trim().toLowerCase() === token) ?? false;
-}
-function findHeaderEnd(bytes) {
-  for (let index = 0; index <= bytes.byteLength - 4; index += 1) {
-    if (bytes[index] === 13 && bytes[index + 1] === 10 && bytes[index + 2] === 13 && bytes[index + 3] === 10) {
-      return index;
-    }
-  }
-  return -1;
-}
-function concatBytes(left, right) {
-  const bytes = new Uint8Array(left.byteLength + right.byteLength);
-  bytes.set(left);
-  bytes.set(right, left.byteLength);
-  return bytes;
-}
-function concatMany(chunks, length) {
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-}
-function toUint8Array(data) {
-  if (ArrayBuffer.isView(data)) {
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength).slice();
-  }
-  return new Uint8Array(data).slice();
-}
-function isBlob(value) {
-  return typeof Blob !== "undefined" && value instanceof Blob;
-}
-function randomBase64(length) {
-  return bytesToBase64(crypto.getRandomValues(new Uint8Array(length)));
-}
-async function sha1Base64(value) {
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(value));
-  return bytesToBase64(new Uint8Array(digest));
-}
-function bytesToBase64(bytes) {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-function invalidStateError(message) {
-  return typeof DOMException === "undefined" ? new Error(message) : new DOMException(message, "InvalidStateError");
-}
-function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function createCloseEvent(code, reason, wasClean) {
-  if (typeof CloseEvent !== "undefined") return new CloseEvent("close", { code, reason, wasClean });
-  const event = new Event("close");
-  Object.defineProperties(event, {
-    code: { value: code, enumerable: true },
-    reason: { value: reason, enumerable: true },
-    wasClean: { value: wasClean, enumerable: true }
-  });
-  return event;
-}
-
 // src/TorClient.ts
 function isBrowser() {
   const g = globalThis;
@@ -4600,7 +4008,6 @@ function isBrowser() {
   return !hasNode && !hasDeno && typeof g.window !== "undefined";
 }
 var TorClient2 = class {
-  WebSocket;
   log;
   // This client's level, as given to its log listener (whose default is
   // 'debug'). Also applied to the JS-side console output below.
@@ -4611,7 +4018,6 @@ var TorClient2 = class {
   closed = false;
   readyPromise = null;
   socketProvider = null;
-  webSockets = /* @__PURE__ */ new Set();
   constructor(options = {}) {
     const hasGateway = Array.isArray(options.gateway) ? options.gateway.length > 0 : !!options.gateway;
     if (isBrowser() && !hasGateway && !options.socketProvider) {
@@ -4619,14 +4025,6 @@ var TorClient2 = class {
         `TorClient: in the browser, you must configure a gateway (KPS address "ip:port:certhash") because browsers can't open regular TCP sockets.`
       );
     }
-    const owner = this;
-    this.WebSocket = class extends TorWebSocket {
-      constructor(url, protocols) {
-        if (owner.closed) throw new Error("TorClient is closed");
-        super(url, protocols, (normalizedUrl) => owner.connectWebSocketStream(normalizedUrl));
-        owner.trackWebSocket(this);
-      }
-    };
     this.logLevel = options.logLevel ?? "debug";
     const toConsole = (level, ...args) => {
       if (levelEnabled(level, this.logLevel)) console[level](...args);
@@ -4648,7 +4046,13 @@ var TorClient2 = class {
     );
     const storage = options.storage ?? createAutoStorage();
     wasmOptions = wasmOptions.withStorage(storage);
-    if (sp.gateway) {
+    const supplied = options.bootstrap;
+    if (supplied) {
+      wasmOptions = wasmOptions.withFastBootstrap(async () => {
+        this.log.info(`Fast bootstrap: using the supplied ${supplied.byteLength} bytes (compressed)`);
+        return supplied;
+      });
+    } else if (sp.gateway) {
       wasmOptions = wasmOptions.withFastBootstrap(async () => {
         this.log.info("Fast bootstrap: fetching bootstrap.zip.zst...");
         const res = await sp.gatewayFetch("/bootstrap.zip.zst");
@@ -4670,31 +4074,18 @@ var TorClient2 = class {
    */
   async fetch(url, init2) {
     if (this.closed) throw new Error("TorClient is closed");
+    const signal = init2?.signal;
+    if (signal?.aborted) throw abortError();
+    await abortRace(this.ready(), signal, abortError);
     const client2 = await this.clientPromise;
-    await this.ready();
-    this.log.info(`Fetching ${url}`);
+    let origin;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      origin = "(invalid URL)";
+    }
+    this.log.info(`Fetching ${origin}`);
     return client2.fetch(url, init2);
-  }
-  /**
-   * Open a browser-compatible WebSocket through Tor.
-   *
-   * The returned socket starts in CONNECTING state. Both ws:// and wss:// are
-   * supported; TLS and DNS resolution happen inside Arti.
-   */
-  createWebSocket(url, protocols) {
-    if (this.closed) throw new Error("TorClient is closed");
-    return new this.WebSocket(url, protocols);
-  }
-  async connectWebSocketStream(url) {
-    if (this.closed) throw new Error("TorClient is closed");
-    const client2 = await this.clientPromise;
-    await this.ready();
-    if (this.closed) throw new Error("TorClient is closed");
-    return client2.connectStream(url);
-  }
-  trackWebSocket(socket) {
-    this.webSockets.add(socket);
-    socket.addEventListener("close", () => this.webSockets.delete(socket), { once: true });
   }
   /**
    * Wait for the Tor client to be ready for traffic
@@ -4738,8 +4129,6 @@ var TorClient2 = class {
   close() {
     if (this.closed) return;
     this.closed = true;
-    for (const socket of this.webSockets) socket.close(1e3, "TorClient closed");
-    this.webSockets.clear();
     this.removeLogListener?.();
     this.removeLogListener = null;
     this.wasmCallback = null;
@@ -4762,7 +4151,7 @@ function hexToBytes(hex) {
   }
   return bytes;
 }
-function bytesToBase642(bytes) {
+function bytesToBase64(bytes) {
   if (typeof Buffer !== "undefined") {
     return Buffer.from(bytes).toString("base64");
   }
@@ -4819,7 +4208,7 @@ setWasmSourceProvider(async () => {
       if (cached) {
         const bytes = base64ToBytes(cached);
         const hash = await sha256hex(bytes);
-        if (hash === "a72a89a458a0fa27d1d9c71d819d37f636e6a8f9890920c661432d7f59cae892") {
+        if (hash === "071ffb356bdacbf37da1a5549f653ed23f6919a2a856335d082affabfc08fb3d") {
           return bytes;
         }
         await cache.delete(CACHE_KEY);
@@ -4827,13 +4216,13 @@ setWasmSourceProvider(async () => {
     } catch {
     }
   }
-  const hashBytes = hexToBytes("a72a89a458a0fa27d1d9c71d819d37f636e6a8f9890920c661432d7f59cae892");
+  const hashBytes = hexToBytes("071ffb356bdacbf37da1a5549f653ed23f6919a2a856335d082affabfc08fb3d");
   const hashHash = await sha256hex(hashBytes);
   const hashHashPrefix = hashHash.slice(0, 2);
   const githubBase = `https://raw.githubusercontent.com/voltrevo/arti/hash-artifacts/`;
   const sources = [
-    { urls: [`https://cdn.jsdelivr.net/npm/tor-js@${"0.4.2"}/dist/tor_js_bg.wasm`], encrypted: false },
-    { urls: [`https://unpkg.com/tor-js@${"0.4.2"}/dist/tor_js_bg.wasm`], encrypted: false },
+    { urls: [`https://cdn.jsdelivr.net/npm/tor-js@${"0.4.4"}/dist/tor_js_bg.wasm`], encrypted: false },
+    { urls: [`https://unpkg.com/tor-js@${"0.4.4"}/dist/tor_js_bg.wasm`], encrypted: false },
     { urls: [`${githubBase}${hashHashPrefix}/${hashHash}`, `${githubBase}tmp/${hashHash}`], encrypted: true }
   ];
   for (let i = sources.length - 1; i > 0; i--) {
@@ -4851,12 +4240,12 @@ setWasmSourceProvider(async () => {
           bytes = await decryptAesGcm(bytes, hashBytes);
         }
         const hash = await sha256hex(bytes);
-        if (hash !== "a72a89a458a0fa27d1d9c71d819d37f636e6a8f9890920c661432d7f59cae892") {
-          throw new Error(`SHA256 mismatch: expected ${"a72a89a458a0fa27d1d9c71d819d37f636e6a8f9890920c661432d7f59cae892"}, got ${hash}`);
+        if (hash !== "071ffb356bdacbf37da1a5549f653ed23f6919a2a856335d082affabfc08fb3d") {
+          throw new Error(`SHA256 mismatch: expected ${"071ffb356bdacbf37da1a5549f653ed23f6919a2a856335d082affabfc08fb3d"}, got ${hash}`);
         }
         const result = new Uint8Array(bytes);
         if (cache) {
-          cache.set(CACHE_KEY, bytesToBase642(result)).catch(() => {
+          cache.set(CACHE_KEY, bytesToBase64(result)).catch(() => {
           });
         }
         return result;
@@ -4882,16 +4271,6 @@ var tor = {
       this.open();
     }
     return client.fetch(url, init2);
-  },
-  /**
-   * Open a browser-compatible WebSocket through Tor.
-   * Automatically opens the TorClient on first use.
-   */
-  createWebSocket(url, protocols) {
-    if (!client) {
-      this.open();
-    }
-    return client.createWebSocket(url, protocols);
   },
   /**
    * Configure the singleton TorClient.
@@ -4929,7 +4308,6 @@ export {
   ArtiSocketProvider,
   KpsGateway,
   Log,
-  TorWebSocket,
   formatAddress,
   parseAddress,
   setWasmUrl,

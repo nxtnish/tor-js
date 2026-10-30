@@ -146,21 +146,6 @@ export class TorClient {
         return ret;
     }
     /**
-     * Open a bidirectional byte stream to a ws:// or wss:// endpoint through Tor.
-     *
-     * For wss:// URLs, TLS is established inside WASM with certificate and
-     * hostname validation before the stream is returned. WebSocket handshaking
-     * and framing are handled by the TypeScript TorWebSocket wrapper.
-     * @param {string} url
-     * @returns {Promise<any>}
-     */
-    connectStream(url) {
-        const ptr0 = passStringToWasm0(url, wasm.__wbindgen_malloc_command_export, wasm.__wbindgen_realloc_command_export);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.torclient_connectStream(this.__wbg_ptr, ptr0, len0);
-        return ret;
-    }
-    /**
      * Create a new TorClient with the given options.
      *
      * This is an async operation that returns a Promise.
@@ -279,48 +264,6 @@ export class TorClientOptions {
     }
 }
 if (Symbol.dispose) TorClientOptions.prototype[Symbol.dispose] = TorClientOptions.prototype.free;
-
-export class TorStream {
-    static __wrap(ptr) {
-        const obj = Object.create(TorStream.prototype);
-        obj.__wbg_ptr = ptr;
-        TorStreamFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
-    __destroy_into_raw() {
-        const ptr = this.__wbg_ptr;
-        this.__wbg_ptr = 0;
-        TorStreamFinalization.unregister(this);
-        return ptr;
-    }
-    free() {
-        const ptr = this.__destroy_into_raw();
-        wasm.__wbg_torstream_free(ptr, 0);
-    }
-    /**
-     * @returns {Promise<any>}
-     */
-    close() {
-        const ret = wasm.torstream_close(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @returns {Promise<any>}
-     */
-    read() {
-        const ret = wasm.torstream_read(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @param {Uint8Array} data
-     * @returns {Promise<any>}
-     */
-    write(data) {
-        const ret = wasm.torstream_write(this.__wbg_ptr, data);
-        return ret;
-    }
-}
-if (Symbol.dispose) TorStream.prototype[Symbol.dispose] = TorStream.prototype.free;
 
 /**
  * Initialize the tor-js WASM module
@@ -445,10 +388,9 @@ function __wbg_get_imports() {
             const ret = arg0.aborted;
             return ret;
         },
-        __wbg_all_ec3dacfec8d1eb8f: function(arg0) {
-            const ret = Promise.all(arg0);
-            return ret;
-        },
+        __wbg_addEventListener_9534e2dc12044ee4: function() { return handleError(function (arg0, arg1, arg2, arg3) {
+            arg0.addEventListener(getStringFromWasm0(arg1, arg2), arg3);
+        }, arguments); },
         __wbg_append_8e87c13f0f08f8cd: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             arg0.append(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
         }, arguments); },
@@ -488,6 +430,10 @@ function __wbg_get_imports() {
             const ret = arg0.catch(arg1);
             return ret;
         },
+        __wbg_charCodeAt_90635349fbda9f5f: function(arg0, arg1) {
+            const ret = arg0.charCodeAt(arg1 >>> 0);
+            return ret;
+        },
         __wbg_clearTimeout_113b1cde814ec762: function(arg0) {
             const ret = clearTimeout(arg0);
             return ret;
@@ -506,12 +452,8 @@ function __wbg_get_imports() {
             const ret = arg0.crypto;
             return ret;
         },
-        __wbg_delete_39424fe5dfd0d536: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_delete_c4a1cfb4a8c20fc4: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = arg0.delete(getStringFromWasm0(arg1, arg2));
-            return ret;
-        }, arguments); },
-        __wbg_digest_1b9b654016330d0f: function() { return handleError(function (arg0, arg1, arg2, arg3) {
-            const ret = arg0.digest(getStringFromWasm0(arg1, arg2), arg3);
             return ret;
         }, arguments); },
         __wbg_done_cffed884d87aa22e: function(arg0) {
@@ -540,7 +482,7 @@ function __wbg_get_imports() {
             const ret = Array.from(arg0);
             return ret;
         },
-        __wbg_getAll_5064dec960ad3673: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_getAll_0adbded114767a14: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = arg0.getAll(getStringFromWasm0(arg1, arg2));
             return ret;
         }, arguments); },
@@ -610,16 +552,6 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
-        __wbg_instanceof_Crypto_05bc6194f86e23c0: function(arg0) {
-            let result;
-            try {
-                result = arg0 instanceof Crypto;
-            } catch (_) {
-                result = false;
-            }
-            const ret = result;
-            return ret;
-        },
         __wbg_instanceof_ReadableStream_07dda5955244a495: function(arg0) {
             let result;
             try {
@@ -659,6 +591,10 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbg_length_4e1adc0d42e23620: function(arg0) {
+            const ret = arg0.length;
+            return ret;
+        },
+        __wbg_length_d52ee452c5be0c99: function(arg0) {
             const ret = arg0.length;
             return ret;
         },
@@ -723,10 +659,6 @@ function __wbg_get_imports() {
             const ret = new Uint8Array(arg0 >>> 0);
             return ret;
         },
-        __wbg_new_with_length_6a9fc3631737ef8c: function(arg0) {
-            const ret = new Array(arg0 >>> 0);
-            return ret;
-        },
         __wbg_new_with_opt_readable_stream_and_init_652b1d60607d75aa: function() { return handleError(function (arg0, arg1) {
             const ret = new Response(arg0, arg1);
             return ret;
@@ -776,13 +708,12 @@ function __wbg_get_imports() {
             const ret = arg0.read();
             return ret;
         },
-        __wbg_reject_bea6d825081bd4d7: function(arg0) {
-            const ret = Promise.reject(arg0);
-            return ret;
-        },
         __wbg_releaseLock_1538945f5f183d9f: function(arg0) {
             arg0.releaseLock();
         },
+        __wbg_removeEventListener_4c9706814dcfaf79: function() { return handleError(function (arg0, arg1, arg2, arg3) {
+            arg0.removeEventListener(getStringFromWasm0(arg1, arg2), arg3);
+        }, arguments); },
         __wbg_require_b4edbdcf3e2a1ef0: function() { return handleError(function () {
             const ret = module.require;
             return ret;
@@ -798,18 +729,15 @@ function __wbg_get_imports() {
             const ret = setTimeout(arg0, arg1);
             return ret;
         }, arguments); },
-        __wbg_set_13d25b81ab403f5e: function(arg0, arg1, arg2) {
-            arg0[arg1 >>> 0] = arg2;
-        },
-        __wbg_set_330c5a0dc45586f5: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
-            const ret = arg0.set(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
-            return ret;
-        }, arguments); },
         __wbg_set_5f2ad37e5e02dc7b: function(arg0, arg1, arg2) {
             arg0.set(getArrayU8FromWasm0(arg1, arg2));
         },
         __wbg_set_a377297433dfea63: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = Reflect.set(arg0, arg1, arg2);
+            return ret;
+        }, arguments); },
+        __wbg_set_b95b27eba5f71a4c: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
+            const ret = arg0.set(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
             return ret;
         }, arguments); },
         __wbg_set_headers_dfe6a763facd3dcc: function(arg0, arg1) {
@@ -848,10 +776,6 @@ function __wbg_get_imports() {
             const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
             return ret;
         },
-        __wbg_subtle_0459789f1437758b: function(arg0) {
-            const ret = arg0.subtle;
-            return ret;
-        },
         __wbg_then_7a850dae4493f353: function(arg0, arg1, arg2) {
             const ret = arg0.then(arg1, arg2);
             return ret;
@@ -864,15 +788,11 @@ function __wbg_get_imports() {
             const ret = TorClient.__wrap(arg0);
             return ret;
         },
-        __wbg_torstream_new: function(arg0) {
-            const ret = TorStream.__wrap(arg0);
-            return ret;
-        },
-        __wbg_tryLock_1ee4b60fa559e640: function() { return handleError(function (arg0) {
+        __wbg_tryLock_91a438b90413652d: function() { return handleError(function (arg0) {
             const ret = arg0.tryLock();
             return ret;
         }, arguments); },
-        __wbg_unlock_fd23e835b8b45411: function() { return handleError(function (arg0) {
+        __wbg_unlock_6449c227c752ea74: function() { return handleError(function (arg0) {
             const ret = arg0.unlock();
             return ret;
         }, arguments); },
@@ -893,17 +813,17 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2025, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2037, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue______true_);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 5532, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 5603, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke___wasm_bindgen_2e541aa8012e5493___JsValue__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_2e541aa8012e5493___JsError___true_);
             return ret;
         },
         __wbindgen_generic_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 2342, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 2354, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_2e541aa8012e5493___convert__closures_____invoke_______true_);
             return ret;
         },
@@ -969,9 +889,6 @@ const TorClientFinalization = (typeof FinalizationRegistry === 'undefined')
 const TorClientOptionsFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_torclientoptions_free(ptr, 1));
-const TorStreamFinalization = (typeof FinalizationRegistry === 'undefined')
-    ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_torstream_free(ptr, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc_command_export();
