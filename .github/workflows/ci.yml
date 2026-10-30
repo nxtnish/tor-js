@@ -120,7 +120,7 @@ jobs:
           test -f "$f"
           grep -q wasmBase64 "$f"                                    # WASM embedded
           ! grep -qiE "createDataChannel|node_modules/@kpstreams" "$f"  # no KPS client code
-          ! grep -q "170.64.236.147" "$f"                            # no baked demo gateway
+          ! grep -q "152.236.3.22" "$f"                            # no baked demo gateway
           echo "worker bundle OK ($(du -h "$f" | cut -f1); no KPS client code; no baked gateway)"
       - name: anon-rpc worker — hermetic harness test (offline)
         working-directory: test/anon-rpc-worker
@@ -190,7 +190,11 @@ jobs:
               data_dir: dir + "/data",
               kps_port: 12298,
               kps_key_file: dir + "/kps.key",
-              keccak_dir: "",
+              keccak_repo: "",
+              keccak_branch: "",
+              keccak_poll_interval: 86400,
+              keccak_manual_sync_min_interval: 1800,
+              demo: false,
               advertised_addresses: ["127.0.0.1"],
               tunnel_max: 8192,
               tunnel_per_ip: 16,

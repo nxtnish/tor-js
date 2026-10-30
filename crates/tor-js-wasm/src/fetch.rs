@@ -397,7 +397,7 @@ pub fn build_request_head(
         let lower = key.to_ascii_lowercase();
         if lower == "host" {
             if value != host {
-                tracing::warn!("Ignoring caller's Host header '{}' (using '{}')", value, host);
+                tracing::warn!("Ignoring caller's Host header (using '{}')", host);
             }
             continue;
         }
@@ -1412,7 +1412,9 @@ mod tests {
     // read_response_headers
     // =====================================================================
 
-    fn read_head<I, B>(pieces: I, method: Method) -> Result<(u16, Vec<(String, String)>, BodyFraming, Vec<u8>), JsTorError>
+    type ParsedHead = (u16, Vec<(String, String)>, BodyFraming, Vec<u8>);
+
+    fn read_head<I, B>(pieces: I, method: Method) -> Result<ParsedHead, JsTorError>
     where
         I: IntoIterator<Item = B>,
         B: AsRef<[u8]>,

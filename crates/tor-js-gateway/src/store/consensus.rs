@@ -123,8 +123,13 @@ impl ConsensusStore {
                 response.len(),
                 old_text.len(),
             );
-            let result = tor_consdiff::apply_diff(old_text, &response, None)
-                .context("applying consensus diff")?;
+            let result = tor_consdiff::apply_diff(
+                old_text,
+                &response,
+                None,
+                tor_consdiff::DiffSizeStrictness::Apply,
+            )
+            .context("applying consensus diff")?;
             result
                 .check_digest()
                 .context("consensus diff digest mismatch")?;
@@ -141,14 +146,14 @@ impl ConsensusStore {
             .context("no fresh-until in consensus response")?;
 
         // Reject if older than what we already have
-        if let Some(ref state) = self.state {
-            if new_valid_after < state.valid_after {
-                anyhow::bail!(
-                    "ignoring older consensus (valid_after={}, have={})",
-                    humantime::format_rfc3339(new_valid_after),
-                    humantime::format_rfc3339(state.valid_after),
-                );
-            }
+        if let Some(ref state) = self.state
+            && new_valid_after < state.valid_after
+        {
+            anyhow::bail!(
+                "ignoring older consensus (valid_after={}, have={})",
+                humantime::format_rfc3339(new_valid_after),
+                humantime::format_rfc3339(state.valid_after),
+            );
         }
 
         let (signed, _remainder, _unchecked) =

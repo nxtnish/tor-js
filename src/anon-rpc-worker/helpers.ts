@@ -110,6 +110,26 @@ export function resolveLogLevel(config: unknown): LogLevel {
   return v as LogLevel;
 }
 
+// The optional `bootstrap` in the object form of WorkerInit.config: a
+// directory snapshot in the gateway's `/bootstrap.zip.zst` format, which the
+// host fetched from a mirror (TorClientOptions.bootstrap). The harness
+// delivers config by structured clone, so the bytes arrive as a Uint8Array or
+// an ArrayBuffer. Anything else is a config error, as for `logLevel`.
+export function resolveBootstrap(config: unknown): Uint8Array | undefined {
+  const v = (config as { bootstrap?: unknown } | null)?.bootstrap;
+  if (v === undefined || typeof config !== "object" || Array.isArray(config)) {
+    return undefined;
+  }
+  const bytes = v instanceof Uint8Array ? v : v instanceof ArrayBuffer ? new Uint8Array(v) : null;
+  if (!bytes || bytes.byteLength === 0) {
+    throw new Error(
+      "tor-js worker: invalid bootstrap in WorkerInit.config; expected the non-empty bytes of a " +
+      "/bootstrap.zip.zst snapshot as a Uint8Array or ArrayBuffer.",
+    );
+  }
+  return bytes;
+}
+
 // A `rawLog` for tor-js's `Log` that forwards to the host's LogApi, dropping
 // entries below `level`. That filter covers tor-js's own JS-side lines; arti's
 // are already filtered at the source by TorClient's `logLevel`.
@@ -167,20 +187,21 @@ export function toLogArg(v: unknown, seen: WeakSet<object> = new WeakSet()): Log
   }
 }
 
+// anon-rpc's init and tor-js's FetchInit are the same API, so everything passes
+// through as it came: tor-js decides what each key means, and an option tor-js
+// adds later reaches it without a change here. Only `headers` differs in shape
+// (§9's pair list against tor-js's record) and is converted. The body, bytes or
+// a ReadableStream, is forwarded as-is, so a streaming request body is never
+// buffered.
 export async function toFetchInit(init?: AnonRequestInit): Promise<FetchInit | undefined> {
   if (!init) return undefined;
-  const out: FetchInit = {};
-  if (init.method) out.method = init.method;
-  if (init.headers) {
+  const { headers, ...rest } = init;
+  const out: FetchInit = rest;
+  if (headers) {
     const h: Record<string, string> = {};
-    for (const [k, v] of init.headers) h[k] = v;
+    for (const [k, v] of headers) h[k] = v;
     out.headers = h;
   }
-  // tor-js's fetch accepts bytes or a ReadableStream (streamed as chunked), so
-  // forward the body as-is — a streaming request body is never buffered.
-  if (init.body !== undefined) out.body = init.body;
-  if (init.signal) out.signal = init.signal;
-  // Note: tor-js's FetchInit has no `redirect`; anon-rpc's is not forwarded.
   return out;
 }
 

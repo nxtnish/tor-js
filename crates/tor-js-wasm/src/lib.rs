@@ -35,10 +35,12 @@
 mod error;
 mod fast_bootstrap;
 mod fetch;
+mod isolation;
 mod runtime;
 mod storage;
 #[cfg(target_arch = "wasm32")]
 mod stream;
+mod tls;
 
 pub use storage::{JsStorage, JsStorageInterface, CachedJsStorage};
 
@@ -49,7 +51,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use arti_client::config::CfgPath;
-use arti_client::{TorClient as ArtiTorClient, TorClientConfig};
+use arti_client::{IsolationToken, StreamPrefs, TorClient as ArtiTorClient, TorClientConfig};
+use isolation::{IsolationGroups, KeyError, MAX_KEY_LEN};
 use serde::Deserialize;
 use crate::runtime::WasmRuntime;
 use tracing::{debug, info, error};
@@ -293,7 +296,10 @@ impl TorClientOptions {
 #[wasm_bindgen]
 pub struct TorClient {
     inner: Option<Arc<ArtiTorClient<WasmRuntime>>>,
-    tls_config: Arc<futures_rustls::rustls::ClientConfig>,
+    tls: tls::TlsConfigs,
+    /// `anonOptions.isolationKey` → Arti isolation group, with the key's own TLS
+    /// session cache (see isolation.rs, tls.rs).
+    isolation: RefCell<IsolationGroups<Arc<futures_rustls::rustls::ClientConfig>>>,
 }
 
 #[wasm_bindgen]
@@ -327,9 +333,27 @@ impl TorClient {
             }
         };
 
-        let tls_config = Arc::clone(&self.tls_config);
+        // Resolve the isolation group now: the map lives on this client, and the
+        // future below must not borrow `self`.
+        let (isolation, tls_config) = match isolation_key_from_init(&init) {
+            Ok(Some(key)) => match self.isolation.borrow_mut().group_for(&key, || self.tls.for_new_key()) {
+                Ok(group) => (Some(group.token), group.state),
+                Err(e) => {
+                    let message = match e {
+                        KeyError::Empty => "anonOptions.isolationKey must not be empty".to_string(),
+                        KeyError::TooLong => format!("anonOptions.isolationKey is longer than {} bytes", MAX_KEY_LEN),
+                    };
+                    return wasm_bindgen_futures::future_to_promise(async move {
+                        Err(JsTorError::new("INVALID_OPTIONS", "validation", message, false).into_js_value())
+                    });
+                }
+            },
+            Ok(None) => (None, self.tls.unkeyed()),
+            Err(e) => return wasm_bindgen_futures::future_to_promise(async move { Err(e) }),
+        };
+
         wasm_bindgen_futures::future_to_promise(async move {
-            fetch_impl(&client, &url, init, tls_config).await
+            fetch_impl(&client, &url, init, tls_config, isolation).await
         })
     }
 
@@ -349,7 +373,7 @@ impl TorClient {
                 });
             }
         };
-        let tls_config = Arc::clone(&self.tls_config);
+        let tls_config = self.tls.unkeyed();
 
         wasm_bindgen_futures::future_to_promise(async move {
             connect_stream_impl(&client, &url, tls_config).await
@@ -465,13 +489,14 @@ async fn create_client(options: TorClientOptions) -> Result<TorClient, JsValue> 
 
     Ok(TorClient {
         inner: Some(tor_client),
-        tls_config: make_tls_config(),
+        tls: tls::TlsConfigs::new(make_tls_config()),
+        isolation: RefCell::new(IsolationGroups::default()),
     })
 }
 
 /// Build a rustls ClientConfig with the Mozilla CA bundle (compiled in via webpki-roots)
 /// and the pure-Rust crypto provider (rustls-rustcrypto) for WASM compatibility.
-fn make_tls_config() -> Arc<futures_rustls::rustls::ClientConfig> {
+fn make_tls_config() -> futures_rustls::rustls::ClientConfig {
     use futures_rustls::rustls;
 
     let provider = rustls_rustcrypto::provider();
@@ -485,7 +510,7 @@ fn make_tls_config() -> Arc<futures_rustls::rustls::ClientConfig> {
         .with_no_client_auth();
 
     config.alpn_protocols = vec![b"http/1.1".to_vec()];
-    Arc::new(config)
+    config
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -530,9 +555,7 @@ async fn connect_stream_impl(
     let stream = client
         .connect((host, port))
         .await
-        .map_err(|error| JsTorError::connection(
-            format!("Failed to connect: {error}"),
-        ).into_js_value())?;
+        .map_err(|error| JsTorError::connect_failed(&error).into_js_value())?;
 
     if secure {
         let connector = futures_rustls::TlsConnector::from(tls_config);
@@ -575,6 +598,7 @@ async fn fetch_impl(
     url_str: &str,
     init: JsValue,
     tls_config: Arc<futures_rustls::rustls::ClientConfig>,
+    isolation: Option<IsolationToken>,
 ) -> Result<JsValue, JsValue> {
     // Parse URL
     let url = url::Url::parse(url_str)
@@ -628,27 +652,33 @@ async fn fetch_impl(
         .ok_or_else(|| JsTorError::new("INVALID_URL", "validation", "No port in URL", false).into_js_value())?;
     let is_https = url.scheme() == "https";
 
-    info!("Fetching {} via Tor ({}:{})", url, host, port);
+    // Log only the origin: the full URL can carry credentials or API keys.
+    info!("Fetching {}://{}:{} via Tor", url.scheme(), host, port);
 
-    // Check abort before connecting (circuit building can take several seconds)
-    check_aborted(signal.as_ref())?;
-
-    // Connect through Tor
+    // Connect through Tor (circuit building can take several seconds)
     debug!("Connecting to {}:{}...", host, port);
-    let stream = client
-        .connect((host, port))
-        .await
-        .map_err(|e| JsTorError::connection(format!("Failed to connect: {}", e)).into_js_value())?;
-
-    // Check abort before sending the HTTP request
-    check_aborted(signal.as_ref())?;
+    let stream = abortable(signal.as_ref(), async {
+        match isolation {
+            Some(token) => {
+                let mut prefs = StreamPrefs::new();
+                prefs.set_isolation(token);
+                client.connect_with_prefs((host, port), &prefs).await
+            }
+            None => client.connect((host, port)).await,
+        }
+        .map_err(|e| JsTorError::connect_failed(&e).into_js_value())
+    })
+    .await?;
 
     debug!("Connected, making HTTP request...");
 
     // Perform the HTTP request — resolves as soon as headers arrive
-    let result = fetch::fetch_headers(stream, &url, method, headers, request_body, is_https, host, Some(tls_config))
-        .await
-        .map_err(|e| e.into_js_value())?;
+    let result = abortable(signal.as_ref(), async {
+        fetch::fetch_headers(stream, &url, method, headers, request_body, is_https, host, Some(tls_config))
+            .await
+            .map_err(|e| e.into_js_value())
+    })
+    .await?;
 
     // Build web_sys::Headers from the parsed headers
     let js_headers = web_sys::Headers::new()
@@ -659,20 +689,16 @@ async fn fetch_impl(
     }
 
     // Convert BodyReader → futures::Stream → JS ReadableStream
-    // The signal is threaded through the unfold state so abort is checked between chunks.
+    // The signal is threaded through the unfold state so abort interrupts each chunk read.
     let body_stream = futures::stream::unfold((result.body_reader, signal), |(mut reader, sig)| async move {
-        if let Some(s) = &sig {
-            if s.aborted() {
-                return Some((Err(JsTorError::aborted().into_js_value()), (reader, sig)));
-            }
-        }
-        match reader.read_chunk().await {
+        let chunk = abortable(sig.as_ref(), async { reader.read_chunk().await.map_err(|e| e.into_js_value()) }).await;
+        match chunk {
             Ok(Some(chunk)) => {
                 let arr = js_sys::Uint8Array::from(&chunk[..]);
                 Some((Ok(arr.into()), (reader, sig)))
             }
             Ok(None) => None,
-            Err(e) => Some((Err(e.into_js_value()), (reader, sig))),
+            Err(e) => Some((Err(e), (reader, sig))),
         }
     });
     let readable = wasm_streams::ReadableStream::from_stream(body_stream);
@@ -748,6 +774,34 @@ fn extract_body_from_js(init: &JsValue) -> Result<fetch::RequestBody, JsValue> {
     .into_js_value())
 }
 
+/// Read `anonOptions.isolationKey` from a JavaScript FetchInit object, if present.
+///
+/// Read with Reflect rather than serde so a bad type is a clear validation
+/// error instead of a generic deserialization failure.
+fn isolation_key_from_init(init: &JsValue) -> Result<Option<String>, JsValue> {
+    let invalid = |message: &str| JsTorError::new("INVALID_OPTIONS", "validation", message, false).into_js_value();
+    if init.is_undefined() || init.is_null() {
+        return Ok(None);
+    }
+    let options = js_sys::Reflect::get(init, &JsValue::from_str("anonOptions"))
+        .map_err(|_| invalid("unreadable anonOptions"))?;
+    if options.is_undefined() {
+        return Ok(None);
+    }
+    let value = js_sys::Reflect::get(&options, &JsValue::from_str("isolationKey"))
+        .map_err(|_| invalid("anonOptions must be an object"))?;
+    if value.is_undefined() {
+        return Ok(None);
+    }
+    // Ill-formed UTF-16 is refused: conversion to UTF-8 would map distinct
+    // keys (a lone surrogate, U+FFFD) to one group.
+    value
+        .dyn_ref::<js_sys::JsString>()
+        .filter(|key| key.is_valid_utf16())
+        .map(|key| Some(String::from(key)))
+        .ok_or_else(|| invalid("anonOptions.isolationKey must be a well-formed string"))
+}
+
 /// Extract an AbortSignal from a JavaScript FetchInit object.
 fn extract_signal_from_js(init: &JsValue) -> Result<Option<web_sys::AbortSignal>, JsValue> {
     if init.is_undefined() || init.is_null() {
@@ -772,6 +826,63 @@ fn check_aborted(signal: Option<&web_sys::AbortSignal>) -> Result<(), JsValue> {
         }
     }
     Ok(())
+}
+
+/// Run `fut` unless `signal` aborts first, in which case `fut` is dropped
+/// (closing whatever stream it owns) and an abort error is returned.
+async fn abortable<T>(
+    signal: Option<&web_sys::AbortSignal>,
+    fut: impl std::future::Future<Output = Result<T, JsValue>>,
+) -> Result<T, JsValue> {
+    let Some(signal) = signal else {
+        return fut.await;
+    };
+    check_aborted(Some(signal))?;
+
+    let (tx, rx) = futures::channel::oneshot::channel::<()>();
+    let _listener = AbortListener::new(signal, Closure::once(move || {
+        let _ = tx.send(());
+    }))?;
+
+    unless_aborted(rx, fut)
+        .await
+        .unwrap_or_else(|| Err(JsTorError::aborted().into_js_value()))
+}
+
+/// Run `fut` unless `abort` resolves first, in which case `fut` is dropped and
+/// `None` is returned. `abort` is polled first, so an abort wins over I/O that
+/// completes in the same wakeup.
+async fn unless_aborted<F: std::future::Future>(
+    abort: impl std::future::Future,
+    fut: F,
+) -> Option<F::Output> {
+    futures::pin_mut!(abort, fut);
+    match futures::future::select(abort, fut).await {
+        futures::future::Either::Left(_) => None,
+        futures::future::Either::Right((output, _)) => Some(output),
+    }
+}
+
+/// An `abort` listener that unregisters itself before its closure is freed,
+/// including when the future holding it is dropped mid-await.
+struct AbortListener<'a> {
+    signal: &'a web_sys::AbortSignal,
+    callback: Closure<dyn FnMut()>,
+}
+
+impl<'a> AbortListener<'a> {
+    fn new(signal: &'a web_sys::AbortSignal, callback: Closure<dyn FnMut()>) -> Result<Self, JsValue> {
+        signal.add_event_listener_with_callback("abort", callback.as_ref().unchecked_ref())?;
+        Ok(Self { signal, callback })
+    }
+}
+
+impl Drop for AbortListener<'_> {
+    fn drop(&mut self) {
+        let _ = self
+            .signal
+            .remove_event_listener_with_callback("abort", self.callback.as_ref().unchecked_ref());
+    }
 }
 
 // ============================================================================
@@ -873,6 +984,8 @@ export interface FetchInit {
     headers?: Record<string, string>;
     body?: string | Uint8Array | ArrayBuffer | ReadableStream<Uint8Array>;
     signal?: AbortSignal;
+    /** Per-call options, as anon-rpc spec 0.4.0 (§9.3) defines them (see FetchInit in types.ts). */
+    anonOptions?: { isolationKey?: string };
 }
 
 export interface TorClient {
@@ -900,3 +1013,51 @@ export interface TorClientOptions {
     withStorage(storage: TorStorage): TorClientOptions;
 }
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::unless_aborted;
+    use futures::channel::oneshot;
+    use futures::executor::block_on;
+    use futures::future::{pending, ready};
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    /// A future that never completes and records when it is dropped.
+    fn pending_until_dropped(dropped: Rc<Cell<bool>>) -> impl std::future::Future<Output = u8> {
+        struct OnDrop(Rc<Cell<bool>>);
+        impl Drop for OnDrop {
+            fn drop(&mut self) {
+                self.0.set(true);
+            }
+        }
+        let guard = OnDrop(dropped);
+        async move {
+            let _guard = guard;
+            pending().await
+        }
+    }
+
+    #[test]
+    fn the_operation_completes_when_no_abort_comes() {
+        assert_eq!(block_on(unless_aborted(pending::<()>(), ready(7))), Some(7));
+    }
+
+    #[test]
+    fn an_abort_ends_the_wait_and_drops_the_operation() {
+        let dropped = Rc::new(Cell::new(false));
+        let (tx, rx) = oneshot::channel::<()>();
+        tx.send(()).unwrap();
+        let output = block_on(unless_aborted(rx, pending_until_dropped(dropped.clone())));
+        assert_eq!(output, None);
+        assert!(
+            dropped.get(),
+            "the interrupted operation, and the stream it owns, is dropped"
+        );
+    }
+
+    #[test]
+    fn an_abort_wins_over_an_operation_ready_in_the_same_wakeup() {
+        assert_eq!(block_on(unless_aborted(ready(()), ready(7))), None);
+    }
+}

@@ -44,6 +44,15 @@ export type TorClientOptions = {
 
   /** Optional custom socket provider. When set, overrides the default ArtiSocketProvider created from the gateway address. */
   socketProvider?: ArtiSocketProvider;
+
+  /**
+   * A directory snapshot in the format a gateway serves at
+   * `/bootstrap.zip.zst`, used for fast bootstrap in place of fetching one
+   * from the gateway. Lets an app serve the snapshot from a mirror it already
+   * talks to, such as the app's origin. The snapshot is checked as one from a
+   * gateway is, and only used while storage holds no consensus.
+   */
+  bootstrap?: Uint8Array;
 };
 
 export type { TorStorage } from '#wasm';
@@ -53,4 +62,15 @@ export interface FetchInit {
   headers?: Record<string, string>;
   body?: string | Uint8Array | ArrayBuffer | ReadableStream<Uint8Array>;
   signal?: AbortSignal;
+  /** Per-call options, as anon-rpc spec 0.4.0 (§9.3) defines them. */
+  anonOptions?: {
+    /**
+     * Requests with different keys never share a Tor circuit; requests with the
+     * same key may share one. Use one key per identity a caller must keep apart
+     * (an account, say) or a fresh random key per request. Omitted: the
+     * default, all requests may share circuits. An opaque label, at most 256
+     * bytes; never logged or sent.
+     */
+    isolationKey?: string;
+  };
 }

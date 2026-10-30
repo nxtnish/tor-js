@@ -45,9 +45,9 @@ The package offers three ways to load the WASM binary. All export the same API.
 
 | Import | WASM loading | Size (gzip) | Best for |
 |---|---|---|---|
-| `tor-js` | Fetched from CDN, cached locally | 32 kB | Production web apps |
-| `tor-js/wasm-base64` | Embedded in the JS bundle | 2.5 MB | Single-file deploys |
-| `tor-js/wasm-file` | Loaded from `tor_js_bg.wasm` next to the module | 31 kB + 1.9 MB | Self-hosted, server-side |
+| `tor-js` | Fetched from CDN, cached locally | 33 kB | Production web apps |
+| `tor-js/wasm-base64` | Embedded in the JS bundle | 2.6 MB | Single-file deploys |
+| `tor-js/wasm-file` | Loaded from `tor_js_bg.wasm` next to the module | 32 kB + 1.9 MB | Self-hosted, server-side |
 
 Each also has a `/singleton` variant (see [Singleton](#singleton) below).
 
@@ -64,6 +64,7 @@ type TorClientOptions = {
   storage?: TorStorage;                // Persistent storage (default: auto-detected)
   logLevel?: LogLevel;                 // 'trace' | 'debug' | 'info' | 'warn' | 'error'
   socketProvider?: ArtiSocketProvider; // Custom transport (overrides `gateway`)
+  bootstrap?: Uint8Array;              // Fast-bootstrap snapshot to use instead of the gateway's
 };
 ```
 
@@ -98,6 +99,7 @@ type FetchInit = {
   headers?: Record<string, string>;
   body?: string | Uint8Array | ArrayBuffer | ReadableStream<Uint8Array>;
   signal?: AbortSignal;
+  anonOptions?: { isolationKey?: string }; // see "Circuit isolation" below
 };
 ```
 
@@ -113,6 +115,31 @@ await client.fetch('https://example.com/upload', {
 ```
 
 Bodies of known size (`string`, `Uint8Array`, `ArrayBuffer`) are sent with `Content-Length` instead.
+
+A failed request rejects with an `Error` carrying `code`, `kind` and `retryable`. A connection failure (`code: 'CONNECTION'`) also carries `torKind`, the Tor implementation's own kind for the failure: tor-js runs on Arti, so it's the name of an Arti [`ErrorKind`](https://docs.rs/tor-error/latest/tor_error/enum.ErrorKind.html). Some say the exit failed to open the connection, such as `'RemoteNetworkTimeout'` or `'RemoteStreamError'`. Tor keeps using a circuit after that, so the same request can keep failing for minutes, while one under a new `isolationKey` gets a new circuit. Others, such as `'RemoteConnectionRefused'`, are the destination's answer, which a new circuit doesn't change. Whether and when to retry is up to you.
+
+#### Circuit isolation
+
+By default all requests may share Tor circuits. Pass `anonOptions.isolationKey`
+to keep requests apart: requests with different keys never share a circuit;
+requests with the same key may share one. Separate circuits choose their exits
+independently, so two keys can still leave through the same exit by chance.
+
+```js
+// Two accounts, kept on separate circuits:
+await client.fetch(rpcUrl, { method: 'POST', body: a, anonOptions: { isolationKey: 'account-1' } })
+await client.fetch(rpcUrl, { method: 'POST', body: b, anonOptions: { isolationKey: 'account-2' } })
+```
+
+The key is an opaque label of at most 256 bytes that never leaves the client.
+TLS sessions are kept per key too: a request resumes only a session made under
+the same key (requests without a key share one cache of their own), so a server
+cannot link keys by a session ticket.
+Isolation costs circuits: each new key builds its own, so prefer one key per
+identity over one per request unless the requests themselves must be kept apart.
+`anonOptions` is the per-call options object of anon-rpc spec 0.4.0 (§9.3), and
+the anon-rpc worker passes a call's request init, `anonOptions` included, to `fetch`, so a
+host writes `worker.fetch(rpcUrl, { method: 'POST', body, anonOptions: { isolationKey } })`.
 
 ### `client.createWebSocket(url, protocols?)`
 
@@ -172,6 +199,8 @@ Close the client and release resources. Also available as `Symbol.dispose` for u
 Browsers can't open raw TCP sockets, so to reach Tor relays from a browser you connect through a **gateway** — a small server that proxies relay connections and serves a fast-bootstrap snapshot of the Tor directory. (In Node.js/Deno tor-js opens TCP directly, so a gateway is optional there — used only for fast bootstrap.)
 
 The client dials the gateway by its **KPS address**, `ip:port:certhash` (printed by the gateway at startup), over [KPS](https://ethereum.github.io/kps/) — WebRTC in browsers, QUIC in Node.js. Each Tor relay connection is an HTTP `CONNECT` tunnel on its own KPS stream; fast bootstrap is a zstd-compressed directory snapshot fetched over the same connection. The full wire protocol is specified in [PROTOCOL.md](PROTOCOL.md).
+
+The snapshot is the same public directory data for every client, so an app can also serve it itself: fetch `/bootstrap.zip.zst` from a mirror, such as a copy on the app's origin refreshed from a gateway, and pass the bytes as `bootstrap`. The client checks it as it checks one from a gateway, and uses it only while its storage holds no consensus. The anon-rpc worker reads the same bytes from `config.bootstrap`.
 
 The gateway lives in this repo at [`crates/tor-js-gateway/`](crates/tor-js-gateway/) — see [its README](crates/tor-js-gateway/README.md) to build and run your own. The [live demo](https://ethereum.github.io/tor-js/demo.html) uses a public gateway that is for demonstration only (limited capacity, may disappear at any time); host your own for anything real.
 

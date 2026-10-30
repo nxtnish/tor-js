@@ -18,6 +18,7 @@ import {
 type WasmStreamClient = {
   connectStream(url: string): Promise<TorByteStream>;
 };
+import { abortError, abortRace } from './abort.js';
 
 function isBrowser(): boolean {
   const g = globalThis as any;
@@ -104,12 +105,19 @@ export class TorClient {
     const storage = options.storage ?? createAutoStorage();
     wasmOptions = wasmOptions.withStorage(storage);
 
-    // Auto-attempt fast bootstrap from gateway — only when one is configured.
-    // The archive is zstd-compressed; the WASM side decompresses it.
+    // Fast bootstrap from a snapshot the caller supplies, else from the
+    // gateway when one is configured. The archive is zstd-compressed; the
+    // WASM side decompresses it.
     // Go through the provider rather than capturing a gateway: it picks per
     // attempt (one gateway on the happy path) and falls over if that one is
     // down, instead of silently degrading to slow bootstrap.
-    if (sp.gateway) {
+    const supplied = options.bootstrap;
+    if (supplied) {
+      wasmOptions = wasmOptions.withFastBootstrap(async (): Promise<Uint8Array> => {
+        this.log.info(`Fast bootstrap: using the supplied ${supplied.byteLength} bytes (compressed)`);
+        return supplied;
+      });
+    } else if (sp.gateway) {
       wasmOptions = wasmOptions.withFastBootstrap(async (): Promise<Uint8Array> => {
         this.log.info('Fast bootstrap: fetching bootstrap.zip.zst...');
         const res = await sp.gatewayFetch('/bootstrap.zip.zst');
@@ -134,9 +142,20 @@ export class TorClient {
    */
   async fetch(url: string, init?: FetchInit): Promise<Response> {
     if (this.closed) throw new Error('TorClient is closed');
+    // Bootstrap is shared, so an abort only ends this caller's wait on it;
+    // bootstrap itself carries on for everyone else.
+    const signal = init?.signal;
+    if (signal?.aborted) throw abortError();
+    await abortRace(this.ready(), signal, abortError);
     const client = await this.clientPromise;
-    await this.ready();
-    this.log.info(`Fetching ${url}`);
+    // Log only the origin: the full URL can carry credentials or API keys.
+    let origin: string;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      origin = '(invalid URL)';
+    }
+    this.log.info(`Fetching ${origin}`);
     return client.fetch(url, init);
   }
 

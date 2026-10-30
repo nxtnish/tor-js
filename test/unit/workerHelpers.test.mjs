@@ -14,7 +14,7 @@ import assert from 'node:assert/strict'
 import { bundleTs } from './bundle.mjs'
 
 let bootstrapBackoff, resolveGateways, toFetchInit, errMsg, makeTorStorage
-let resolveLogLevel, hostRawLog, toLogArg, DEFAULT_LOG_LEVEL
+let resolveLogLevel, resolveBootstrap, hostRawLog, toLogArg, DEFAULT_LOG_LEVEL
 let BOOTSTRAP_RETRY_BASE_MS, BOOTSTRAP_RETRY_MAX_MS
 
 before(async () => {
@@ -25,6 +25,7 @@ before(async () => {
     errMsg,
     makeTorStorage,
     resolveLogLevel,
+    resolveBootstrap,
     hostRawLog,
     toLogArg,
     DEFAULT_LOG_LEVEL,
@@ -33,7 +34,7 @@ before(async () => {
   } = await bundleTs('src/anon-rpc-worker/helpers.ts', 'workerHelpers'))
 })
 
-const ADDR = '170.64.236.147:12298:uEiBHwUMNRTetrbqScahm81Di57Xv2OphNrx-CurJGOq3ww'
+const ADDR = '152.236.3.22:12298:uEiCH0VdbhryzJcMtCfB0vLA4sOvHdQ4hq5w7CopcwU59bQ'
 const ADDR2 = '203.0.113.4:12298:uEiBz7Kw'
 
 describe('resolveGateways', () => {
@@ -183,6 +184,24 @@ describe('toFetchInit', () => {
     assert.deepEqual((await toFetchInit({ headers: [] })).headers, {})
   })
 
+  test('anonOptions passes through unchanged', async () => {
+    const anonOptions = { isolationKey: 'account-7', later: 1 }
+    const out = await toFetchInit({ headers: [['content-type', 'application/json']], anonOptions })
+    assert.equal(out.anonOptions, anonOptions)
+    assert.deepEqual(out.headers, { 'content-type': 'application/json' })
+  })
+
+  test('no anonOptions leaves anonOptions unset', async () => {
+    const out = await toFetchInit({ headers: [['content-type', 'application/json']] })
+    assert.equal('anonOptions' in out, false)
+  })
+
+  test('a request header is forwarded whatever its name', async () => {
+    const out = await toFetchInit({ headers: [['x-anon-rpc-isolation', 'account-7']] })
+    assert.deepEqual(out.headers, { 'x-anon-rpc-isolation': 'account-7' })
+    assert.equal('anonOptions' in out, false)
+  })
+
   test('a bytes body is forwarded unchanged', async () => {
     const body = new Uint8Array([1, 2, 3])
     const out = await toFetchInit({ body })
@@ -213,11 +232,13 @@ describe('toFetchInit', () => {
     assert.deepEqual(Object.keys(out), ['method'])
   })
 
-  test("anon-rpc's redirect is not forwarded", async () => {
-    // tor-js's FetchInit has no redirect field; silently dropping it is the
-    // documented behaviour.
-    const out = await toFetchInit({ method: 'GET', redirect: 'follow' })
-    assert.ok(!('redirect' in out))
+  test('every other key is forwarded as it came', async () => {
+    // tor-js decides what an init key means, so the glue passes them all on,
+    // including ones tor-js does not use (yet).
+    const later = { nested: [1, undefined] }
+    const out = await toFetchInit({ method: 'GET', redirect: 'manual', priority: 'high', later })
+    assert.deepEqual(out, { method: 'GET', redirect: 'manual', priority: 'high', later })
+    assert.equal(out.later, later)
   })
 })
 
@@ -319,6 +340,26 @@ describe('resolveLogLevel', () => {
   test('refuses an unrecognised level rather than guessing', () => {
     for (const logLevel of ['verbose', 'INFO', 3, null, '']) {
       assert.throws(() => resolveLogLevel({ gateways: [ADDR], logLevel }), /invalid logLevel/)
+    }
+  })
+})
+
+describe('resolveBootstrap', () => {
+  test('is absent unless the object form names one', () => {
+    for (const config of [undefined, null, ADDR, [ADDR], { gateways: [ADDR] }]) {
+      assert.equal(resolveBootstrap(config), undefined, JSON.stringify(config))
+    }
+  })
+
+  test('reads the snapshot bytes from the object form', () => {
+    const bytes = new Uint8Array([1, 2, 3])
+    assert.equal(resolveBootstrap({ gateways: [ADDR], bootstrap: bytes }), bytes)
+    assert.deepEqual(resolveBootstrap({ gateways: [ADDR], bootstrap: bytes.buffer }), bytes)
+  })
+
+  test('refuses anything but non-empty bytes', () => {
+    for (const bootstrap of ['https://example.com/bootstrap.zip.zst', [1, 2], null, 0, new Uint8Array(0), new ArrayBuffer(0)]) {
+      assert.throws(() => resolveBootstrap({ gateways: [ADDR], bootstrap }), /invalid bootstrap/)
     }
   })
 })

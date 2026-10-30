@@ -109,7 +109,7 @@ pub async fn sync_once(
     let (_signed, _remainder, unchecked) =
         MdConsensus::parse(&consensus_text).context("parsing consensus")?;
     let unvalidated = unchecked
-        .check_valid_at(&now)
+        .if_valid_at(&now)
         .map_err(|e: TimeValidityError| anyhow::anyhow!("consensus not timely: {}", e))?
         .set_n_authorities(authority_ids.len());
 
@@ -162,7 +162,7 @@ pub async fn sync_once(
     // --- Fetch only missing microdescs in batches ---
     let batch_size = 500;
     if !missing.is_empty() {
-        let total_batches = (missing.len() + batch_size - 1) / batch_size;
+        let total_batches = missing.len().div_ceil(batch_size);
         for (batch_idx, batch) in missing.chunks(batch_size).enumerate() {
             tracing::info!(
                 "fetching microdescs batch {}/{}...",
@@ -391,7 +391,7 @@ mod tests {
             assert!(*d <= Duration::from_secs(3600), "delay {d:?} too long for a stale consensus");
         }
         assert!(
-            delays.iter().any(|d| *d == Duration::ZERO),
+            delays.contains(&Duration::ZERO),
             "some draws should be due immediately"
         );
     }

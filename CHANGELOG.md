@@ -10,6 +10,116 @@
   masking, fragmentation, ping/pong, and closing handshake. The singleton also
   exposes `tor.createWebSocket()`.
 
+## 0.4.4
+
+No API breaks. Per-key circuit isolation, a host-supplied fast-bootstrap
+snapshot, an `AbortSignal` that takes effect at once, and dependency updates
+including arti 2.7.0. The WASM changes, so the anon-rpc worker's keccak256 pin
+changes too.
+
+### Added
+
+- **Per-key circuit isolation: `fetch(url, { anonOptions: { isolationKey } })`.**
+  Every stream a client opened could share circuits, so requests made seconds
+  apart left the same exit and whoever answered them could link them. Requests
+  with different keys now never share a circuit (each key is its own arti
+  isolation group) or a TLS session (each key has its own session cache);
+  requests with the same key may share both. Use one key per identity a caller
+  needs kept apart, such as a wallet account, or a fresh random key per request
+  where the requests themselves must not be linked — each new key builds its
+  own circuit.
+  Omitting it keeps the old behaviour. An empty, over-256-byte or ill-formed
+  UTF-16 key is rejected with `INVALID_OPTIONS`.
+- **anon-rpc worker: the call's request init reaches `fetch` (anon-rpc spec
+  0.4.0, §9).** The worker passes the init through as it came, converting only
+  `headers` to tor-js's record, so `anonOptions` (§9.3) and any other key the
+  host forwarded reach tor-js. A host's
+  `fetch(url, { anonOptions: { isolationKey } })` picks the call's circuits.
+- **A fast-bootstrap snapshot from the host: `TorClientOptions.bootstrap`.**
+  Fast bootstrap downloads a 3 MB directory snapshot from the gateway, the
+  slowest and most variable step of a cold start (a median 13 s, up to 48 s,
+  on an Android Chrome emulator). The snapshot is the same public data for
+  every client, so an app can now serve `/bootstrap.zip.zst` from a mirror it
+  already talks to and pass the bytes in. They get the same checks as a
+  gateway's, including arti's signature checks, and are used only while
+  storage holds no consensus. The anon-rpc worker reads them from
+  `WorkerInit.config.bootstrap`.
+- **`torKind` on connection errors.** A connect failure still rejects with
+  `code: 'CONNECTION'`, and now also carries `torKind`, the Tor
+  implementation's own kind for the failure (an Arti `ErrorKind` name, such as
+  `'RemoteStreamError'`). It tells an exit that failed to open the stream,
+  where a request under a new `isolationKey` may succeed, from a destination
+  that refused the connection.
+
+### Fixes
+
+- **Aborting a fetch now takes effect at once.** `fetch` checked its
+  `AbortSignal` only between steps, so a request waiting on the connect, the
+  response headers or a body chunk kept its Tor stream until the server
+  answered (one held a stream for 502 s). Those waits now end on abort,
+  closing the stream, and `fetch` rejects with `ABORT`. A signal that aborts
+  while the client is still bootstrapping also rejects that fetch straight
+  away; bootstrap continues for everyone else.
+- **Request URLs and `Host` values are kept out of the logs.** `fetch` logged
+  the full URL, which can carry credentials or an API key, and a
+  caller-supplied `Host` header it ignored. It now logs only the origin.
+- **Connection errors now give the cause.** A stream the exit refused failed
+  with only "Protocol error while launching a data stream". The message now
+  also carries the underlying cause, such as the END reason the exit sent.
+- **Node 24 processes could share a storage directory unlocked.** Node 24
+  provides `navigator.locks`, so the storage lock took a Web Lock there instead
+  of the lock file, and a Web Lock in Node spans only one process's threads.
+  Two Node processes on one directory each held "the" lock and wrote over each
+  other. Node now always takes the lock file.
+- **Reproducible builds no longer depend on the checkout path.** The build's
+  path normalisation replaced a prefix anywhere in a path, so a checkout at
+  `/src` also rewrote the `src` directories inside dependency and workspace
+  paths, and the WASM hash changed with it. Prefixes are now stripped only from
+  the start of a path. Ordinary checkouts and CI build the same bytes as before.
+
+### Dependencies
+
+- **arti 2.7.0**, via the fork pinned at `voltrevo/arti@2527494`, which still
+  carries the guard-timeout fix from 0.4.3.
+- **Security updates:** `rustls` 0.23.46 and `rustls-webpki` 0.103.16 (TLS),
+  `ruzstd` 0.9.1 (the fast-bootstrap decoder), and `webpki-roots` 1.0.10.
+
+### Gateway (`tor-js-gateway`)
+
+- Built on arti 2.7.0, with the same security updates plus `quinn-proto`
+  0.11.18 (QUIC) and `zip` 9.
+
+## 0.4.3
+
+Two fixes, no API changes. The WASM changes, so the anon-rpc worker's
+keccak256 pin changes too.
+
+### Fixes
+
+- **The client could abort in its first 15 seconds.** arti's guard manager
+  computed "now minus the 15-second guard connect timeout" and panicked if that
+  went below zero. On wasm the clock starts at page load, worker creation or
+  process start, so a client that got that far within 15 seconds (easy with a
+  warm cache) could take the whole WASM instance down on its first circuit,
+  with `Can't subtract connect timeout from now.` The arti fork is now pinned
+  to `voltrevo/arti@e623ace`, which carries the fix. The same fix has been
+  proposed upstream.
+- **Fast bootstrap no longer needs `crypto.subtle`.** It hashed each
+  microdescriptor with `crypto.subtle.digest`, which only exists in secure
+  contexts and which some hosts withhold on purpose (the anon-rpc node harness
+  removes it). There, fast bootstrap failed with `Cannot read properties of
+  undefined (reading 'digest')` and fell back to a slow bootstrap from the Tor
+  network; the same happened on an `http://` page. SHA-256 is now computed in
+  Rust, with no measurable slowdown.
+
+### Other
+
+- The demo gateway address used by the website, tests and CI is now
+  `152.236.3.22:12298:uEiCH0VdbhryzJcMtCfB0vLA4sOvHdQ4hq5w7CopcwU59bQ`.
+- `npm run test:browser` and `npm run test:worker` no longer pass
+  `--with-deps` to `playwright install`, so they fail on missing system
+  libraries instead of asking for a sudo password partway through.
+
 ## 0.4.2
 
 No API breaks. One behaviour change to be aware of: setting `logLevel` without a
